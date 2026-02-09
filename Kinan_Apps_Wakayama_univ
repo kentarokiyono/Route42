@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Route 42 - The Holy Path</title>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+    <style>
+        :root { --gold: #c5a059; --bg: #050505; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); overflow: hidden; font-family: serif; color: white; }
+        #app { position: relative; width: 100%; height: 100vh; display: flex; flex-direction: column; }
+        header { position: absolute; top: 0; width: 100%; padding: 20px 0; background: linear-gradient(rgba(0,0,0,0.8), transparent); text-align: center; z-index: 100; pointer-events: none; }
+        header h1 { margin: 0; font-size: 18px; color: var(--gold); letter-spacing: 0.3em; }
+        #map { width: 100%; height: 100%; }
+        .panel { position: absolute; inset: 0; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); z-index: 150; padding: 20px; }
+        .spot-title { font-size: 28px; color: var(--gold); margin-bottom: 10px; border-bottom: 1px solid var(--gold); }
+        .spot-desc { font-size: 15px; line-height: 1.8; max-width: 90%; margin-bottom: 25px; text-align: justify; }
+        .next-guide { font-size: 12px; color: var(--gold); margin-bottom: 15px; border: 1px solid var(--gold); padding: 5px 15px; border-radius: 20px; }
+        .btn { width: 80%; max-width: 250px; border: 1px solid var(--gold); padding: 12px; font-size: 14px; color: var(--gold); text-decoration: none; margin-bottom: 10px; background: rgba(0,0,0,0.4); text-align: center; font-weight: bold; display: block; }
+        .btn-gold { background: var(--gold); color: black; }
+        .close-btn { position: absolute; top: 30px; right: 20px; font-size: 30px; color: var(--gold); }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; display: flex; justify-content: center; gap: 40px; padding: 20px 0; background: #050505; border-top: 1px solid rgba(197,160,89,0.3); z-index: 200; }
+        .marker-hitbox { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
+        .marker-dot { width: 14px; height: 14px; background: var(--gold); border: 2px solid white; border-radius: 50%; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header id="mainHeader"><h1>Southern Tip Route 42</h1></header>
+        <div id="map"></div>
+        <div class="panel" id="missionPanel">
+            <div class="close-btn" onclick="closeInfo()">×</div>
+            <div class="next-guide" id="nextGuide"></div>
+            <div class="spot-title" id="spotName"></div>
+            <div class="spot-desc" id="spotDesc"></div>
+            <a id="navLink" class="btn btn-gold" target="_blank">Googleナビ開始</a>
+            <a id="nextLink" class="btn" target="_blank">次の聖地への道順</a>
+        </div>
+        <nav class="nav-bar">
+            <div style="color:var(--gold)" onclick="location.reload()">EXPLORE</div>
+            <div style="color:var(--gold)" onclick="alert('KankouDMOでログインしてください')">STRATEGY</div>
+        </nav>
+    </div>
+
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1Ijoia2VudGFyb3dreW10b3VyaXNtIiwiYSI6ImNtbGVzZTZpOTFvNHkzZW9mY2R0aHQ2a3UifQ.E9eZXhlwt6vC0yNkoX3QcA';
+
+        // 枯木灘（すさみ）〜太地 10拠点
+        var spots = [
+            { name: "枯木灘", coords: [135.4851, 33.5415], desc: "ロードトリップの起点。リアス式海岸の絶景が続く、聖なる道の始まり。" },
+            { name: "海中ポスト", coords: [135.4862, 33.5488], desc: "水深10mのポスト。冒険と想いを届ける場所。" },
+            { name: "潮岬", coords: [135.7625, 33.4330], desc: "本州最南端。地球の丸さを実感する、断崖の果て。" },
+            { name: "橋杭岩", coords: [135.7957, 33.4882], desc: "850m続く奇岩列。地質学と伝説が交差する地。" },
+            { name: "樫野埼灯台", coords: [135.8622, 33.4717], desc: "日本最古の石造灯台。人類の絆を伝える聖域。" },
+            { name: "古座川の一枚岩", coords: [135.7202, 33.5458], desc: "高さ100mの巨岩壁。1500万年前のマグマの記憶。" },
+            { name: "太地くじらの博物館", coords: [135.9450, 33.5970], desc: "終着点。海と人の共生の歴史を辿る地。" }
+        ];
+
+        // 国道42号線の細分化トレース（約100点のダミー補間データ）
+        var routePath = [];
+        for(var i=0; i<spots.length-1; i++){
+            var start = spots[i].coords;
+            var end = spots[i+1].coords;
+            for(var j=0; j<=15; j++){ // 10拠点の間を15点ずつ刻んで約100点にする
+                var lng = start[0] + (end[0] - start[0]) * (j/15);
+                var lat = start[1] + (end[1] - start[1]) * (j/15);
+                // 海岸線に沿わせるための簡易カーブ補正（擬似的）
+                lng += Math.sin(j * 0.5) * 0.002;
+                routePath.push([lng, lat]);
+            }
+        }
+
+        var map = new mapboxgl.Map({
+            container: 'map', style: 'mapbox://styles/mapbox/light-v11',
+            center: [135.75, 33.52], zoom: 10
+        });
+
+        function showInfo(i) {
+            var spot = spots[i];
+            document.getElementById('spotName').innerText = spot.name;
+            document.getElementById('spotDesc').innerText = spot.desc;
+            document.getElementById('missionPanel').style.display = 'flex';
+            
+            var navUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + spot.coords[1] + ',' + spot.coords[0];
+            document.getElementById('navLink').href = navUrl;
+
+            var nextGuide = document.getElementById('nextGuide');
+            var nextBtn = document.getElementById('nextLink');
+            if (i < spots.length - 1) {
+                var nextSpot = spots[i+1];
+                nextGuide.innerText = 'NEXT: ' + nextSpot.name;
+                nextBtn.style.display = 'block';
+                nextBtn.innerText = '→ ' + nextSpot.name + ' への道順';
+                nextBtn.href = 'https://www.google.com/maps/dir/?api=1&origin=' + spot.coords[1] + ',' + spot.coords[0] + '&destination=' + nextSpot.coords[1] + ',' + nextSpot.coords[0];
+            } else {
+                nextGuide.innerText = 'JOURNEY COMPLETED';
+                nextBtn.style.display = 'none';
+            }
+            map.flyTo({ center: spot.coords, zoom: 13 });
+        }
+
+        function closeInfo() { document.getElementById('missionPanel').style.display = 'none'; }
+
+        map.on('load', function() {
+            map.addSource('route42', {
+                'type': 'geojson',
+                'data': { 'type': 'Feature', 'geometry': { 'type': 'LineString', 'coordinates': routePath } }
+            });
+            map.addLayer({
+                'id': 'route42-line', 'type': 'line', 'source': 'route42',
+                'paint': { 'line-color': '#c5a059', 'line-width': 3, 'line-dasharray': [2, 1] }
+            });
+
+            spots.forEach(function(spot, i) {
+                var el = document.createElement('div');
+                el.className = 'marker-hitbox';
+                el.innerHTML = '<div class="marker-dot"></div>';
+                new mapboxgl.Marker(el).setLngLat(spot.coords).addTo(map);
+                el.onclick = function() { showInfo(i); };
+            });
+        });
+    </script>
+</body>
+</html>
