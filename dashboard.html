@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Route 42 ダッシュボード</title>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+    <style>
+        :root {
+            --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+            --bg: #f5f5f7;
+            --sidebar: rgba(236, 236, 240, 0.82);
+            --panel: #ffffff;
+            --panel-2: #fbfbfd;
+            --text: #1d1d1f;
+            --text-2: #5e5e63;
+            --text-3: #6e6e73;
+            --sep: rgba(60, 60, 67, 0.14);
+            --accent: #0066cc;
+            --accent-bg: rgba(0, 102, 204, 0.10);
+            --selected: rgba(0, 102, 204, 0.12);
+            --shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+            --danger: #c62828;
+            --none: #e8e8ed;
+            --none-text: #5e5e63;
+            color-scheme: light;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1c1c1e;
+                --sidebar: rgba(40, 40, 44, 0.82);
+                --panel: #2c2c2e;
+                --panel-2: #262628;
+                --text: #f5f5f7;
+                --text-2: #c7c7cc;
+                --text-3: #a1a1a6;
+                --sep: rgba(235, 235, 245, 0.14);
+                --accent: #4da3ff;
+                --accent-bg: rgba(77, 163, 255, 0.16);
+                --selected: rgba(77, 163, 255, 0.20);
+                --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.3);
+                --danger: #ff6b60;
+                --none: #3a3a3c;
+                --none-text: #c7c7cc;
+                color-scheme: dark;
+            }
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; height: 100%; }
+        body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; -webkit-font-smoothing: antialiased; }
+        button, input, textarea, select { font-family: inherit; font-size: 13px; color: inherit; }
+        button { cursor: pointer; }
+        [hidden] { display: none !important; }
+        :focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 50%, transparent); outline-offset: 1px; }
+
+        .window { display: grid; grid-template-columns: 232px minmax(0, 1fr) 320px; height: 100vh; }
+
+        /* sidebar */
+        .sidebar { background: var(--sidebar); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-right: 1px solid var(--sep); display: flex; flex-direction: column; padding: 20px 12px 12px; gap: 4px; overflow-y: auto; }
+        .brand { padding: 0 8px 14px; }
+        .brand b { display: block; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+        .brand span { font-size: 11px; color: var(--text-3); }
+        .side-label { padding: 14px 8px 4px; font-size: 11px; font-weight: 600; color: var(--text-3); }
+        .nav-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 32px; padding: 0 8px; border: none; border-radius: 7px; background: none; text-align: left; font-size: 13px; }
+        .nav-item svg { width: 17px; height: 17px; color: var(--accent); flex-shrink: 0; }
+        .nav-item .grow { flex: 1; }
+        .nav-item[aria-current="page"] { background: var(--selected); font-weight: 600; }
+        .nav-item:hover:not([aria-current="page"]) { background: rgba(127,127,127,0.10); }
+        .badge { min-width: 20px; padding: 1px 6px; border-radius: 10px; background: rgba(127,127,127,0.18); color: var(--text-2); font-size: 11px; font-weight: 600; text-align: center; }
+        .badge.hot { background: var(--danger); color: #fff; }
+        .side-foot { margin-top: auto; padding: 12px 8px 4px; border-top: 1px solid var(--sep); display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--text-2); }
+        .side-foot a { color: var(--accent); text-decoration: none; }
+        .side-foot a:hover { text-decoration: underline; }
+        .demo { align-self: flex-start; font-size: 11px; padding: 1px 8px; border-radius: 10px; background: rgba(255,149,0,0.16); color: #a35a00; }
+
+        /* main */
+        main { display: flex; flex-direction: column; min-width: 0; }
+        .toolbar { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--sep); background: var(--panel-2); flex-wrap: wrap; }
+        .toolbar h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+        .live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #2a7f6f; box-shadow: 0 0 0 3px rgba(42,127,111,0.18); }
+        .dot.off { background: var(--danger); box-shadow: none; }
+        .spacer { flex: 1; }
+        .segmented { display: inline-flex; padding: 2px; border-radius: 8px; background: rgba(127,127,127,0.14); }
+        .segmented button { min-height: 26px; padding: 0 12px; border: none; border-radius: 6px; background: none; font-size: 12px; font-weight: 500; }
+        .segmented button[aria-pressed="true"] { background: var(--panel); box-shadow: 0 1px 3px rgba(0,0,0,0.12); font-weight: 600; }
+        .tbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--sep); background: var(--panel); font-size: 12px; font-weight: 500; }
+        .tbtn:hover { background: var(--panel-2); }
+        .tbtn .state { font-weight: 700; }
+        .tbtn.alert { border-color: var(--danger); color: var(--danger); }
+
+        .content { flex: 1; min-height: 0; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+        .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+        .card { background: var(--panel); border-radius: 12px; box-shadow: var(--shadow); }
+        .stat { padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; border: none; text-align: left; }
+        .stat:hover { box-shadow: 0 0 0 1px var(--sep), var(--shadow); }
+        .stat .k { font-size: 12px; color: var(--text-3); }
+        .stat .v { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+        .stat .v small { font-size: 13px; font-weight: 500; color: var(--text-3); margin-left: 2px; }
+        .stat.hot .v { color: var(--danger); }
+        #view-overview:not([hidden]) { flex: 1; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+        .map-card { flex: 1; min-height: 420px; position: relative; overflow: hidden; }
+        #map { position: absolute; inset: 0; }
+        .map-filter { position: absolute; top: 12px; left: 12px; z-index: 5; }
+        .map-filter .segmented { background: rgba(255,255,255,0.86); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: var(--shadow); }
+        @media (prefers-color-scheme: dark) { .map-filter .segmented { background: rgba(44,44,46,0.86); } }
+        .notice-strip { padding: 10px 14px; display: flex; gap: 10px; align-items: baseline; }
+        .notice-strip b { color: var(--accent); white-space: nowrap; }
+        .notice-strip span { white-space: pre-line; }
+
+        /* table */
+        .table-card { overflow: hidden; }
+        .table-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--sep); }
+        .table-head h2 { margin: 0; font-size: 15px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 11px; font-weight: 600; color: var(--text-3); padding: 8px 16px; border-bottom: 1px solid var(--sep); }
+        td { padding: 10px 16px; border-bottom: 1px solid var(--sep); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tbody tr { cursor: pointer; }
+        tbody tr:hover { background: rgba(127,127,127,0.06); }
+        tbody tr[aria-selected="true"] { background: var(--selected); }
+        td.sub { color: var(--text-2); font-size: 12px; }
+        .stale { color: var(--danger); }
+        .pill { display: inline-block; padding: 2px 10px; border-radius: 10px; color: #fff; font-size: 12px; font-weight: 600; white-space: nowrap; }
+        .pill.none { background: var(--none); color: var(--none-text); }
+        .empty { padding: 24px 16px; color: var(--text-3); text-align: center; }
+
+        /* inspector */
+        .inspector { border-left: 1px solid var(--sep); background: var(--panel-2); overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+        .inspector h2 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+        .insp-empty { margin: auto; color: var(--text-3); text-align: center; line-height: 1.7; }
+        .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 12px; }
+        .kv dt { color: var(--text-3); }
+        .kv dd { margin: 0; }
+        .group { background: var(--panel); border-radius: 10px; box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .group-title { display: flex; justify-content: space-between; align-items: baseline; font-weight: 600; }
+        .group-title span { font-weight: 400; font-size: 12px; color: var(--text-3); }
+        .levels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+        .levels button { position: relative; min-height: 36px; border-radius: 8px; border: 1px solid var(--sep); background: var(--panel-2); font-weight: 600; }
+        .levels button:hover { border-color: var(--accent); }
+        .levels button[aria-pressed="true"] { color: #fff; border-color: transparent; }
+        .levels kbd { position: absolute; top: 3px; right: 6px; font-family: inherit; font-size: 10px; opacity: 0.6; }
+        .hint { font-size: 11px; color: var(--text-3); }
+        .btn { min-height: 32px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--sep); background: var(--panel); color: var(--accent); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-primary { background: var(--accent); border-color: transparent; color: #fff; }
+        .btn-danger { color: var(--danger); }
+        .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+        /* list */
+        .feed { list-style: none; margin: 0; padding: 0; }
+        .feed li { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-bottom: 1px solid var(--sep); cursor: pointer; }
+        .feed li:last-child { border-bottom: none; }
+        .feed li:hover { background: rgba(127,127,127,0.06); }
+        .feed li[aria-selected="true"] { background: var(--selected); }
+        .feed .icon { width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; background: #b35a16; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+        .feed .body { flex: 1; min-width: 0; }
+        .feed .text { white-space: pre-line; }
+        .feed .meta { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+        /* map markers */
+        .marker { position: relative; display: flex; flex-direction: column; align-items: center; background: none; border: none; padding: 0; min-width: 36px; min-height: 36px; }
+        .marker-seal { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: #fff; color: #1d1d1f; border: 1.5px solid rgba(0,0,0,0.2); box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+        .marker.site .marker-seal { background: #1d1d1f; color: #fff; }
+        .marker.road .marker-seal { border-radius: 50%; }
+        .marker.report .marker-seal { border-radius: 50%; background: #b35a16; color: #fff; border-color: #fff; }
+        .marker.sel .marker-seal { box-shadow: 0 0 0 4px rgba(0,102,204,0.35); }
+        .marker-label { margin-top: 2px; font-size: 11px; font-weight: 500; color: #1d1d1f; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; white-space: nowrap; }
+        .cong { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 1.5px solid #fff; }
+
+        /* dialogs (sheet) */
+        dialog { border: none; border-radius: 14px; padding: 0; width: min(440px, calc(100vw - 32px)); background: var(--panel); color: var(--text); box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        dialog::backdrop { background: rgba(0,0,0,0.25); }
+        .sheet { padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+        .sheet h3 { margin: 0; font-size: 15px; }
+        .sheet label { font-size: 12px; color: var(--text-2); }
+        .sheet input, .sheet textarea { width: 100%; min-height: 32px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--sep); background: var(--panel-2); }
+        .sheet textarea { min-height: 90px; resize: vertical; }
+        .sheet .segmented { display: flex; flex-wrap: wrap; }
+        .sheet .segmented button { flex: 1; }
+        .sheet-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+        .gate { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 50; }
+        .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: rgba(29,29,31,0.92); color: #fff; padding: 8px 14px; border-radius: 10px; font-size: 12px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 60; }
+        .toast.show { opacity: 1; }
+
+        @media (max-width: 1180px) { .window { grid-template-columns: 200px minmax(0, 1fr) 280px; } .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 900px) {
+            .window { grid-template-columns: 1fr; height: auto; }
+            .sidebar { flex-direction: row; flex-wrap: wrap; padding: 10px; }
+            .side-label, .side-foot, .brand span { display: none; }
+            .nav-item { width: auto; }
+            .inspector { border-left: none; border-top: 1px solid var(--sep); }
+            .map-card { min-height: 360px; }
+        }
+    </style>
+</head>
+<body>
+<div class="window">
+    <aside class="sidebar" aria-label="サイドバー">
+        <div class="brand"><b>Route 42</b><span>串本町・那智勝浦町</span></div>
+        <div class="side-label">表示</div>
+        <button class="nav-item" type="button" data-view="overview" aria-current="page">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            <span class="grow">概要</span>
+        </button>
+        <button class="nav-item" type="button" data-view="spots">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+            <span class="grow">スポット</span><span class="badge" id="cntSpots"></span>
+        </button>
+        <button class="nav-item" type="button" data-view="roads">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3 5 21M16 3l3 18M12 4v3M12 11v3M12 18v2"/></svg>
+            <span class="grow">道路</span><span class="badge" id="cntRoads"></span>
+        </button>
+        <button class="nav-item" type="button" data-view="reports">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5z"/></svg>
+            <span class="grow">現場報告</span><span class="badge" id="cntReports"></span>
+        </button>
+        <button class="nav-item" type="button" data-view="logs">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span class="grow">入力履歴</span>
+        </button>
+        <div class="side-foot">
+            <span class="demo" id="demoBadge" hidden>デモモード</span>
+            <span id="whoName"></span>
+            <a href="staff.html">職員マップ（スマホ）</a>
+            <a href="status.html" target="_blank" rel="noopener">一般向けページ</a>
+            <a href="admin.html">管理画面・職員管理</a>
+        </div>
+    </aside>
+
+    <main>
+        <div class="toolbar">
+            <h1 id="viewTitle">概要</h1>
+            <span class="live"><span class="dot" id="liveDot"></span><span id="liveText">接続中…</span></span>
+            <span class="spacer"></span>
+            <div class="segmented owner-only" role="group" aria-label="表示モード" id="modeSeg">
+                <button type="button" data-mode="normal">通常</button>
+                <button type="button" data-mode="launch">打ち上げ</button>
+            </div>
+            <button class="tbtn owner-only" type="button" id="launchBtn">打ち上げ：<span class="state" id="launchState"></span></button>
+            <button class="tbtn" type="button" id="noticeBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4h3l6 5V5L7 10H4z"/><path d="M17 9a4 4 0 0 1 0 6"/></svg>
+                お知らせ
+            </button>
+        </div>
+
+        <div class="content">
+            <!-- 概要 -->
+            <section id="view-overview" class="view">
+                    <div class="stats">
+                        <button class="card stat" type="button" data-goto="spots"><span class="k">混雑・満員のスポット</span><span class="v" id="stCrowd"></span></button>
+                        <button class="card stat" type="button" data-goto="roads"><span class="k">渋滞・通行止めの区間</span><span class="v" id="stJam"></span></button>
+                        <button class="card stat" type="button" data-goto="reports"><span class="k">未対応の現場報告</span><span class="v" id="stReports"></span></button>
+                        <button class="card stat" type="button" data-goto="logs"><span class="k">最終更新</span><span class="v" id="stUpdated"></span></button>
+                    </div>
+                    <div class="card notice-strip" id="noticeStrip" hidden><b>お知らせ</b><span id="noticeText"></span></div>
+                    <div class="card map-card">
+                        <div class="map-filter">
+                            <div class="segmented" role="group" aria-label="地図に表示するスポット" id="setSeg">
+                                <button type="button" data-set="launch" aria-pressed="true">打ち上げ</button>
+                                <button type="button" data-set="pilgrim" aria-pressed="false">巡礼</button>
+                            </div>
+                        </div>
+                        <div id="map" role="region" aria-label="地図"></div>
+                    </div>
+            </section>
+
+            <!-- スポット -->
+            <section id="view-spots" class="view card table-card" hidden>
+                <div class="table-head">
+                    <h2>スポット</h2>
+                    <div class="segmented" role="group" aria-label="種類" id="setSeg2">
+                        <button type="button" data-set="launch" aria-pressed="true">打ち上げ</button>
+                        <button type="button" data-set="pilgrim" aria-pressed="false">巡礼</button>
+                    </div>
+                </div>
+                <table>
+                    <thead><tr><th>名前</th><th>種類</th><th>収容</th><th>状況</th><th>更新</th></tr></thead>
+                    <tbody id="spotRows"></tbody>
+                </table>
+            </section>
+
+            <!-- 道路 -->
+            <section id="view-roads" class="view card table-card" hidden>
+                <div class="table-head"><h2>道路</h2></div>
+                <table>
+                    <thead><tr><th>区間</th><th>方向</th><th>状況</th><th>更新</th></tr></thead>
+                    <tbody id="roadRows"></tbody>
+                </table>
+            </section>
+
+            <!-- 報告 -->
+            <section id="view-reports" class="view card table-card" hidden>
+                <div class="table-head"><h2>未対応の現場報告</h2></div>
+                <ul class="feed" id="reportList"></ul>
+            </section>
+
+            <!-- 履歴 -->
+            <section id="view-logs" class="view card table-card" hidden>
+                <div class="table-head"><h2>入力履歴（最新50件）</h2></div>
+                <table>
+                    <thead><tr><th>日時</th><th>入力者</th><th>内容</th></tr></thead>
+                    <tbody id="logRows"></tbody>
+                </table>
+            </section>
+        </div>
+    </main>
+
+    <aside class="inspector" id="inspector" aria-label="詳細" aria-live="polite">
+        <p class="insp-empty">地図または一覧から<br>スポット・道路・報告を選択</p>
+    </aside>
+</div>
+
+<!-- 打ち上げ状況 -->
+<dialog id="launchDlg" aria-labelledby="launchDlgTitle">
+    <form method="dialog" class="sheet" id="launchForm">
+        <h3 id="launchDlgTitle">打ち上げ状況</h3>
+        <div class="segmented" role="group" aria-label="状況" id="stateSeg"></div>
+        <label for="launchTime">予定日時</label>
+        <input type="datetime-local" id="launchTime">
+        <label for="launchNote">補足（任意）</label>
+        <input type="text" id="launchNote" maxlength="80" placeholder="例：天候のため延期。次回は12/3 11:00予定">
+        <div class="sheet-actions">
+            <button class="btn" value="cancel" formnovalidate>キャンセル</button>
+            <button class="btn btn-primary" value="save" id="launchSave">配信</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- お知らせ -->
+<dialog id="noticeDlg" aria-labelledby="noticeDlgTitle">
+    <form method="dialog" class="sheet">
+        <h3 id="noticeDlgTitle">お知らせ</h3>
+        <label for="noticeInput">利用者の画面上部に表示（500文字まで）</label>
+        <textarea id="noticeInput" maxlength="500" placeholder="例：臨時駐車場Aは満車です。Bをご利用ください。"></textarea>
+        <div class="sheet-actions">
+            <button class="btn btn-danger" value="clear" id="noticeClear" style="margin-right:auto">消す</button>
+            <button class="btn" value="cancel" formnovalidate>キャンセル</button>
+            <button class="btn btn-primary" value="save">配信</button>
+        </div>
+    </form>
+</dialog>
+
+<div class="gate" id="gate">
+    <p id="gateMsg">読み込み中…</p>
+    <a class="btn btn-primary" href="admin.html" id="gateLink" hidden>管理画面でログイン</a>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+    import { createStore, LEVELS, ROAD_LEVELS, LAUNCH_STATES, roadKey, freshLevel, formatClock, formatLaunchTime } from './js/store.js';
+
+    mapboxgl.accessToken = 'pk.eyJ1Ijoia2VudGFyb3dreW10b3VyaXNtIiwiYSI6ImNtbGVzZTZpOTFvNHkzZW9mY2R0aHQ2a3UifQ.E9eZXhlwt6vC0yNkoX3QcA';
+
+    const $ = (id) => document.getElementById(id);
+    const el = (tag, props, ...kids) => { const e = document.createElement(tag); Object.assign(e, props || {}); kids.forEach((k) => e.append(k)); return e; };
+    const SPOTS = await fetch('data/spots.json').then((r) => r.json());
+    const ROADS = SPOTS.roads || [];
+    const store = await createStore();
+
+    let user = null, live = null, reports = [], logs = [];
+    let view = 'overview', set = 'launch';
+    let sel = null; // { type: 'spot'|'road'|'report', id }
+    let mapReady = false;
+    let spotMarkers = [], roadMarkers = [], reportMarkers = [];
+    const unsubs = [];
+
+    const isOwner = () => !!user && user.role === 'owner';
+    const allSpots = () => SPOTS.launch.concat(SPOTS.pilgrim);
+    const spotById = (id) => allSpots().find((s) => s.id === id);
+    const roadById = (id) => ROADS.find((r) => r.id === id);
+    const KIND = { viewing: '見学場', parking: '駐車場', site: '射場', pilgrim: '札所' };
+    const VIEW_TITLE = { overview: '概要', spots: 'スポット', roads: '道路', reports: '現場報告', logs: '入力履歴' };
+
+    function toast(msg) {
+        const t = $('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toast.t);
+        toast.t = setTimeout(() => t.classList.remove('show'), 2000);
+    }
+    async function run(fn, ok) {
+        try { await fn(); if (ok) toast(ok); }
+        catch (e) { console.error(e); toast('失敗：' + (e && e.message ? e.message : e)); }
+    }
+    function pill(levels, lv) {
+        const s = el('span', { className: 'pill' + (lv === null ? ' none' : '') });
+        if (lv === null) s.textContent = '情報なし';
+        else { s.textContent = levels[lv].label; s.style.background = levels[lv].color; }
+        return s;
+    }
+    function updatedText(e, now) {
+        if (!e) return '未入力';
+        return formatClock(e.at) + ' ' + e.by + (freshLevel(e, now) === null ? '（60分以上前）' : '');
+    }
+    function roadWorst(r, now) {
+        let w = null;
+        r.dirs.forEach((_, d) => { const lv = freshLevel(live.roads[roadKey(r.id, d)], now); if (lv !== null && (w === null || lv > w)) w = lv; });
+        return w;
+    }
+
+    /* ---------- map ---------- */
+    const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const map = new mapboxgl.Map({ container: 'map', style: dark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11', center: [135.86, 33.53], zoom: 11 });
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+
+    function fit() {
+        if (!mapReady) return;
+        const b = new mapboxgl.LngLatBounds();
+        SPOTS[set].forEach((s) => b.extend(s.coords));
+        if (set === 'launch') ROADS.forEach((r) => r.coords.forEach((c) => b.extend(c)));
+        map.fitBounds(b, { padding: { top: 60, bottom: 40, left: 40, right: 40 }, duration: 500, maxZoom: 13 });
+    }
+    function marker(cls, seal, label, onClick, ll) {
+        const btn = el('button', { type: 'button', className: 'marker ' + cls });
+        const badge = el('span', { className: 'cong', hidden: true });
+        btn.append(el('span', { className: 'marker-seal', textContent: seal }), badge);
+        if (label) btn.append(el('span', { className: 'marker-label', textContent: label }));
+        btn.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+        const mk = new mapboxgl.Marker({ element: btn, anchor: 'top', offset: [0, -13] }).setLngLat(ll).addTo(map);
+        return { el: btn, badge, marker: mk };
+    }
+    function roadFeatures(now) {
+        return { type: 'FeatureCollection', features: ROADS.map((r) => {
+            const lv = live ? roadWorst(r, now) : null;
+            return { type: 'Feature', properties: { color: lv === null ? '#8e8e93' : ROAD_LEVELS[lv].color }, geometry: { type: 'LineString', coordinates: r.coords } };
+        }) };
+    }
+    function buildMap() {
+        map.addSource('roads', { type: 'geojson', data: roadFeatures(Date.now()) });
+        map.addLayer({ id: 'roads-casing', type: 'line', source: 'roads', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 9 } });
+        map.addLayer({ id: 'roads-line', type: 'line', source: 'roads', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': 5 } });
+        roadMarkers = ROADS.map((r) => {
+            const m = marker('road', '道', '', () => select('road', r.id), r.coords[Math.floor(r.coords.length / 2)]);
+            m.el.setAttribute('aria-label', r.name);
+            m.road = r;
+            return m;
+        });
+        buildSpotMarkers();
+    }
+    function buildSpotMarkers() {
+        spotMarkers.forEach((m) => m.marker.remove());
+        spotMarkers = SPOTS[set].map((s, i) => {
+            const seal = s.kind === 'pilgrim' ? String(i + 1) : s.kind === 'parking' ? 'P' : s.kind === 'site' ? '射' : '見';
+            const m = marker(s.kind === 'site' ? 'site' : '', seal, s.name, () => select('spot', s.id), s.coords);
+            m.el.setAttribute('aria-label', s.name);
+            m.spot = s;
+            return m;
+        });
+        roadMarkers.forEach((m) => { m.el.hidden = set !== 'launch'; });
+        ['roads-casing', 'roads-line'].forEach((id) => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', set === 'launch' ? 'visible' : 'none'); });
+    }
+    function buildReportMarkers() {
+        reportMarkers.forEach((m) => m.marker.remove());
+        reportMarkers = reports.filter((r) => r.coords).map((r) => {
+            const m = marker('report', '!', formatClock(r.at), () => select('report', r.id), r.coords);
+            m.report = r;
+            return m;
+        });
+    }
+    function renderMap(now) {
+        if (!mapReady || !live) return;
+        spotMarkers.forEach((m) => {
+            const lv = m.spot.kind === 'site' ? null : freshLevel(live.spots[m.spot.id], now);
+            m.badge.hidden = lv === null;
+            if (lv !== null) { m.badge.textContent = LEVELS[lv].short; m.badge.style.background = LEVELS[lv].color; }
+            m.el.classList.toggle('sel', !!sel && sel.type === 'spot' && sel.id === m.spot.id);
+        });
+        roadMarkers.forEach((m) => {
+            const lv = roadWorst(m.road, now);
+            m.badge.hidden = lv === null;
+            if (lv !== null) { m.badge.textContent = ROAD_LEVELS[lv].short; m.badge.style.background = ROAD_LEVELS[lv].color; }
+            m.el.classList.toggle('sel', !!sel && sel.type === 'road' && sel.id === m.road.id);
+        });
+        reportMarkers.forEach((m) => m.el.classList.toggle('sel', !!sel && sel.type === 'report' && sel.id === m.report.id));
+        const src = map.getSource('roads');
+        if (src) src.setData(roadFeatures(now));
+    }
+
+    /* ---------- render ---------- */
+    function renderToolbar() {
+        $('modeSeg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === live.mode)));
+        const st = live.launch.state;
+        $('launchState').textContent = LAUNCH_STATES[st] + (formatLaunchTime(live.launch.time) ? ' ' + formatLaunchTime(live.launch.time) : '');
+        $('launchBtn').classList.toggle('alert', st === 'delayed' || st === 'scrubbed');
+        $('liveText').textContent = 'リアルタイム' + (live.updatedAt ? ' ・ ' + formatClock(live.updatedAt) + ' 更新' : '');
+    }
+
+    function renderOverview(now) {
+        const crowd = allSpots().filter((s) => s.kind !== 'site' && (freshLevel(live.spots[s.id], now) ?? -1) >= 3).length;
+        let jam = 0;
+        ROADS.forEach((r) => r.dirs.forEach((_, d) => { if ((freshLevel(live.roads[roadKey(r.id, d)], now) ?? -1) >= 2) jam++; }));
+        const setStat = (id, n, unit) => { $(id).textContent = ''; $(id).append(String(n), el('small', { textContent: unit })); $(id).parentElement.classList.toggle('hot', n > 0); };
+        setStat('stCrowd', crowd, '件');
+        setStat('stJam', jam, '件');
+        setStat('stReports', reports.length, '件');
+        $('stUpdated').textContent = live.updatedAt ? formatClock(live.updatedAt) : '—';
+        $('stUpdated').parentElement.classList.remove('hot');
+        $('noticeStrip').hidden = !live.notice;
+        $('noticeText').textContent = live.notice ? live.notice.text + '（' + formatClock(live.notice.at) + ' ' + live.notice.by + '）' : '';
+
+        $('cntSpots').textContent = crowd || '';
+        $('cntSpots').classList.toggle('hot', crowd > 0);
+        $('cntRoads').textContent = jam || '';
+        $('cntRoads').classList.toggle('hot', jam > 0);
+        $('cntReports').textContent = reports.length || '';
+        $('cntReports').classList.toggle('hot', reports.length > 0);
+    }
+
+    function selectableRow(type, id, cells) {
+        const tr = el('tr', { tabIndex: 0 });
+        tr.setAttribute('aria-selected', String(!!sel && sel.type === type && sel.id === id));
+        cells.forEach((c) => tr.append(c));
+        tr.addEventListener('click', () => select(type, id));
+        tr.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(type, id); } });
+        return tr;
+    }
+
+    function renderSpotsTable(now) {
+        const body = $('spotRows');
+        body.textContent = '';
+        SPOTS[set].filter((s) => s.kind !== 'site')
+            .map((s) => ({ s, e: live.spots[s.id], lv: freshLevel(live.spots[s.id], now) }))
+            .sort((a, b) => (b.lv ?? -1) - (a.lv ?? -1))
+            .forEach(({ s, e, lv }) => {
+                body.append(selectableRow('spot', s.id, [
+                    el('td', { textContent: s.name }),
+                    el('td', { className: 'sub', textContent: KIND[s.kind] }),
+                    el('td', { className: 'sub', textContent: s.capacity ? s.capacity.toLocaleString() + s.unit : '—' }),
+                    el('td', {}, pill(LEVELS, lv)),
+                    el('td', { className: 'sub' + (e && lv === null ? ' stale' : ''), textContent: updatedText(e, now) })
+                ]));
+            });
+    }
+
+    function renderRoadsTable(now) {
+        const body = $('roadRows');
+        body.textContent = '';
+        ROADS.forEach((r) => r.dirs.forEach((dirName, d) => {
+            const e = live.roads[roadKey(r.id, d)];
+            const lv = freshLevel(e, now);
+            body.append(selectableRow('road', r.id, [
+                el('td', { textContent: d === 0 ? r.name : '' }),
+                el('td', { className: 'sub', textContent: dirName }),
+                el('td', {}, pill(ROAD_LEVELS, lv)),
+                el('td', { className: 'sub' + (e && lv === null ? ' stale' : ''), textContent: updatedText(e, now) })
+            ]));
+        }));
+    }
+
+    function renderReports() {
+        const ul = $('reportList');
+        ul.textContent = '';
+        if (!reports.length) { ul.append(el('li', { className: 'empty', textContent: '未対応の報告はありません' })); return; }
+        reports.forEach((r) => {
+            const li = el('li', { tabIndex: 0 });
+            li.setAttribute('aria-selected', String(!!sel && sel.type === 'report' && sel.id === r.id));
+            li.append(el('span', { className: 'icon', textContent: '!' }),
+                el('div', { className: 'body' }, el('div', { className: 'text', textContent: r.text }),
+                    el('div', { className: 'meta', textContent: formatClock(r.at) + ' ・ ' + r.name + (r.coords ? '' : ' ・ 位置なし') })));
+            li.addEventListener('click', () => select('report', r.id));
+            li.addEventListener('keydown', (e) => { if (e.key === 'Enter') select('report', r.id); });
+            ul.append(li);
+        });
+    }
+
+    function logText(g) {
+        if (g.action === 'level') return (spotById(g.target) || { name: g.target }).name + ' → ' + (LEVELS[Number(g.value)] || {}).label;
+        if (g.action === 'road') {
+            const [id, d] = String(g.target).split('__');
+            const r = roadById(id);
+            return (r ? r.name + '（' + r.dirs[Number(d)] + '）' : g.target) + ' → ' + (ROAD_LEVELS[Number(g.value)] || {}).label;
+        }
+        if (g.action === 'notice') return g.value ? 'お知らせ：' + g.value : 'お知らせを消去';
+        if (g.action === 'mode') return '表示モード → ' + (g.value === 'launch' ? '打ち上げ' : '通常');
+        if (g.action === 'launch') return '打ち上げ状況 → ' + (LAUNCH_STATES[g.target] || g.target) + ' ' + g.value;
+        if (g.action === 'report') return '現場報告：' + g.value;
+        if (g.action === 'resolve') return '報告を対応済みに' + (g.value ? '：' + g.value : '');
+        return g.action;
+    }
+    function renderLogs() {
+        const body = $('logRows');
+        body.textContent = '';
+        if (!logs.length) { body.append(el('tr', {}, el('td', { className: 'empty', colSpan: 3, textContent: '履歴なし' }))); return; }
+        logs.slice(0, 50).forEach((g) => {
+            const d = new Date(g.at);
+            body.append(el('tr', {},
+                el('td', { className: 'sub', textContent: (d.getMonth() + 1) + '/' + d.getDate() + ' ' + formatClock(g.at) }),
+                el('td', { textContent: g.name }),
+                el('td', { textContent: logText(g) })));
+        });
+    }
+
+    function levelGroup(title, sub, levels, current, onPick, keyHint) {
+        const g = el('div', { className: 'group' });
+        g.append(el('div', { className: 'group-title' }, title, el('span', { textContent: sub })));
+        const box = el('div', { className: 'levels' });
+        levels.forEach((L, i) => {
+            const b = el('button', { type: 'button', textContent: L.label });
+            b.setAttribute('aria-pressed', String(current === i));
+            if (current === i) b.style.background = L.color;
+            if (keyHint) b.append(el('kbd', { textContent: String(i + 1) }));
+            b.addEventListener('click', () => onPick(i));
+            box.append(b);
+        });
+        g.append(box);
+        return g;
+    }
+
+    function renderInspector(now) {
+        const box = $('inspector');
+        box.textContent = '';
+        if (!sel || !live) {
+            box.append(el('p', { className: 'insp-empty' }, '地図または一覧から', el('br'), 'スポット・道路・報告を選択'));
+            return;
+        }
+        if (sel.type === 'spot') {
+            const s = spotById(sel.id);
+            const e = live.spots[s.id];
+            box.append(el('h2', { textContent: s.name }));
+            const kv = el('dl', { className: 'kv' });
+            kv.append(el('dt', { textContent: '種類' }), el('dd', { textContent: KIND[s.kind] }));
+            if (s.capacity) kv.append(el('dt', { textContent: '収容' }), el('dd', { textContent: '約' + s.capacity.toLocaleString() + s.unit }));
+            kv.append(el('dt', { textContent: '更新' }), el('dd', { textContent: updatedText(e, now) }));
+            box.append(kv);
+            if (s.kind !== 'site') {
+                box.append(levelGroup('混雑度', '', LEVELS, freshLevel(e, now), (i) => run(() => store.setSpotLevel(s.id, i), s.name + '：' + LEVELS[i].label), true));
+                box.append(el('p', { className: 'hint', textContent: 'キーボードの 1〜4 でも入力できます' }));
+            }
+            box.append(el('div', { className: 'btn-row' }, el('a', { className: 'btn', href: 'https://www.google.com/maps/search/?api=1&query=' + s.coords[1] + ',' + s.coords[0], target: '_blank', rel: 'noopener', textContent: 'Google マップで開く' })));
+            return;
+        }
+        if (sel.type === 'road') {
+            const r = roadById(sel.id);
+            box.append(el('h2', { textContent: r.name }));
+            r.dirs.forEach((dirName, d) => {
+                const e = live.roads[roadKey(r.id, d)];
+                box.append(levelGroup(dirName, updatedText(e, now), ROAD_LEVELS, freshLevel(e, now), (i) => {
+                    if (i === 3 && !confirm(r.name + '（' + dirName + '）を「通行止め」として配信しますか？')) return;
+                    run(() => store.setRoadLevel(r.id, d, i), dirName + '：' + ROAD_LEVELS[i].label);
+                }, false));
+            });
+            return;
+        }
+        if (sel.type === 'report') {
+            const r = reports.find((x) => x.id === sel.id);
+            if (!r) { sel = null; renderInspector(now); return; }
+            box.append(el('h2', { textContent: '現場報告' }));
+            box.append(el('div', { className: 'group' }, el('div', { textContent: r.text, style: 'white-space:pre-line' })));
+            const kv = el('dl', { className: 'kv' });
+            kv.append(el('dt', { textContent: '報告者' }), el('dd', { textContent: r.name }),
+                el('dt', { textContent: '時刻' }), el('dd', { textContent: formatClock(r.at) }),
+                el('dt', { textContent: '位置' }), el('dd', { textContent: r.coords ? r.coords[1].toFixed(4) + ', ' + r.coords[0].toFixed(4) : 'なし' }));
+            box.append(kv);
+            const done = el('button', { type: 'button', className: 'btn btn-primary', textContent: '対応済みにする' });
+            done.addEventListener('click', () => { if (confirm('この報告を対応済みにしますか？')) run(() => store.resolveReport(r.id), '対応済みにしました'); });
+            box.append(el('div', { className: 'btn-row' }, done));
+        }
+    }
+
+    function render() {
+        if (!live) return;
+        const now = Date.now();
+        renderToolbar();
+        renderOverview(now);
+        if (view === 'spots') renderSpotsTable(now);
+        if (view === 'roads') renderRoadsTable(now);
+        if (view === 'reports') renderReports();
+        if (view === 'logs') renderLogs();
+        renderMap(now);
+        renderInspector(now);
+    }
+
+    /* ---------- actions ---------- */
+    function select(type, id) {
+        sel = { type, id };
+        render();
+        if (view === 'overview' && mapReady) {
+            const c = type === 'spot' ? spotById(id).coords : type === 'road' ? (() => { const r = roadById(id); return r.coords[Math.floor(r.coords.length / 2)]; })() : (reports.find((x) => x.id === id) || {}).coords;
+            if (c) map.flyTo({ center: c, zoom: Math.max(map.getZoom ? map.getZoom() : 12, 12), duration: 500 });
+        }
+    }
+    function showView(v) {
+        view = v;
+        document.querySelectorAll('.nav-item').forEach((b) => { if (b.dataset.view === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+        document.querySelectorAll('.view').forEach((s) => { s.hidden = s.id !== 'view-' + v; });
+        $('viewTitle').textContent = VIEW_TITLE[v];
+        render();
+        if (v === 'overview' && mapReady && map.resize) map.resize();
+    }
+    function setSet(s) {
+        set = s;
+        ['setSeg', 'setSeg2'].forEach((id) => $(id).querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.set === s))));
+        if (mapReady) { buildSpotMarkers(); fit(); }
+        render();
+    }
+
+    document.querySelectorAll('.nav-item').forEach((b) => b.addEventListener('click', () => showView(b.dataset.view)));
+    document.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => showView(b.dataset.goto)));
+    ['setSeg', 'setSeg2'].forEach((id) => $(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setSet(b.dataset.set); }));
+
+    $('modeSeg').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b || !live || b.dataset.mode === live.mode) return;
+        const label = b.dataset.mode === 'launch' ? '打ち上げ' : '通常';
+        if (confirm('全利用者の表示を「' + label + '」モードに切り替えます。よろしいですか？')) run(() => store.setMode(b.dataset.mode), label + 'モードに切り替えました');
+    });
+
+    // 打ち上げ状況シート
+    Object.keys(LAUNCH_STATES).forEach((k) => {
+        const b = el('button', { type: 'button', textContent: LAUNCH_STATES[k] });
+        b.dataset.state = k;
+        b.addEventListener('click', () => $('stateSeg').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b))));
+        $('stateSeg').append(b);
+    });
+    $('launchBtn').addEventListener('click', () => {
+        $('stateSeg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.state === live.launch.state)));
+        $('launchTime').value = live.launch.time;
+        $('launchNote').value = live.launch.note;
+        $('launchDlg').showModal();
+    });
+    $('launchDlg').addEventListener('close', () => {
+        if ($('launchDlg').returnValue !== 'save') return;
+        const p = $('stateSeg').querySelector('[aria-pressed="true"]');
+        const state = p ? p.dataset.state : 'scheduled';
+        if ((state === 'delayed' || state === 'scrubbed') && !confirm('「' + LAUNCH_STATES[state] + '」を全利用者に配信します。よろしいですか？')) return;
+        run(() => store.setLaunch({ state, time: $('launchTime').value, note: $('launchNote').value.trim() }), '打ち上げ状況を配信しました');
+    });
+
+    // お知らせシート
+    $('noticeBtn').addEventListener('click', () => { $('noticeInput').value = live && live.notice ? live.notice.text : ''; $('noticeDlg').showModal(); });
+    $('noticeDlg').addEventListener('close', () => {
+        const v = $('noticeDlg').returnValue;
+        if (v === 'save') {
+            const t = $('noticeInput').value.trim();
+            if (!t) { toast('お知らせが空です'); return; }
+            run(() => store.setNotice(t), 'お知らせを配信しました');
+        } else if (v === 'clear') {
+            run(() => store.setNotice(''), 'お知らせを消しました');
+        }
+    });
+
+    // 1〜4 キーで選択中スポットの混雑度を入力
+    document.addEventListener('keydown', (e) => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        const t = e.target;
+        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+        if (document.querySelector('dialog[open]')) return;
+        if (e.key === 'Escape') { sel = null; render(); return; }
+        const n = Number(e.key);
+        if (sel && sel.type === 'spot' && n >= 1 && n <= LEVELS.length) {
+            const s = spotById(sel.id);
+            if (s.kind === 'site') return;
+            run(() => store.setSpotLevel(s.id, n - 1), s.name + '：' + LEVELS[n - 1].label);
+        }
+    });
+
+    /* ---------- auth / boot ---------- */
+    $('demoBadge').hidden = !store.isDemo;
+    store.onAuth((u) => {
+        user = u;
+        unsubs.splice(0).forEach((f) => f());
+        const ok = !!(u && u.role);
+        $('gate').hidden = ok;
+        $('gateLink').hidden = ok;
+        $('gateMsg').textContent = !u ? 'ログインが必要です' : (u.role ? '' : 'このアカウントには権限がありません');
+        if (!ok) return;
+        $('whoName').textContent = u.name + '（' + (u.role === 'owner' ? 'オーナー' : '職員') + '）';
+        document.querySelectorAll('.owner-only').forEach((x) => { x.hidden = !isOwner(); });
+        unsubs.push(store.subscribeLive((l) => { live = l; $('liveDot').classList.remove('off'); render(); },
+            (e) => { $('liveDot').classList.add('off'); $('liveText').textContent = '切断：' + e.message; }));
+        unsubs.push(store.subscribeReports((list) => { reports = list; if (mapReady) buildReportMarkers(); render(); }));
+        unsubs.push(store.subscribeLogs((g) => { logs = g; if (view === 'logs') renderLogs(); }));
+    });
+
+    setInterval(render, 60 * 1000);
+
+    map.on('load', () => {
+        mapReady = true;
+        buildMap();
+        buildReportMarkers();
+        render();
+        fit();
+    });
+</script>
+</body>
+</html>
