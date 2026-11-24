@@ -13,12 +13,12 @@ service cloud.firestore {
       return !('notice' in d) || d.notice == null
         || (d.notice.text is string && d.notice.text.size() <= 500);
     }
-    // 職員が変更できるのは混雑・お知らせのみ。モード・打ち上げ状況はオーナーのみ。
+    // 職員が変更できるのは混雑（スポット・道路）・お知らせのみ。モード・打ち上げ状況はオーナーのみ。
     function statusUpdateOk() {
       return noticeOk(request.resource.data) && (
         isOwner()
         || (isStaff() && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['spots', 'notice', 'updatedAt']))
+              .hasOnly(['spots', 'roads', 'notice', 'updatedAt']))
       );
     }
 

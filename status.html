@@ -65,7 +65,7 @@
 </main>
 
 <script type="module">
-    import { createStore, LEVELS, LAUNCH_STATES, PUBLIC_POLL_MS, freshLevel, formatClock, formatLaunchTime } from './js/store.js';
+    import { createStore, LEVELS, ROAD_LEVELS, LAUNCH_STATES, PUBLIC_POLL_MS, roadKey, freshLevel, formatClock, formatLaunchTime } from './js/store.js';
 
     const $ = (id) => document.getElementById(id);
     const SPOTS = await fetch('data/spots.json').then((r) => r.json());
@@ -122,8 +122,44 @@
         return [h, ul];
     }
 
+    // 道路: 区間ごとに方向別の状況
+    function roadSection(now) {
+        const roads = SPOTS.roads || [];
+        const h = document.createElement('h2');
+        h.textContent = '道路状況';
+        const ul = document.createElement('ul');
+        roads.forEach((r) => {
+            const li = document.createElement('li');
+            li.style.flexDirection = 'column';
+            li.style.alignItems = 'stretch';
+            const n = document.createElement('div');
+            n.className = 'name';
+            n.textContent = r.name;
+            li.append(n);
+            r.dirs.forEach((dirName, d) => {
+                const e = live.roads[roadKey(r.id, d)];
+                const lv = freshLevel(e, now);
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px';
+                const t = document.createElement('span');
+                t.className = 'meta';
+                t.textContent = dirName + (lv !== null ? ' ・ ' + formatClock(e.at) + ' 時点' : '');
+                const p = document.createElement('span');
+                p.className = 'pill' + (lv === null ? ' none' : '');
+                if (lv === null) p.textContent = '情報なし';
+                else { p.textContent = ROAD_LEVELS[lv].label; p.style.background = ROAD_LEVELS[lv].color; }
+                row.append(t, p);
+                li.append(row);
+            });
+            ul.append(li);
+        });
+        return [h, ul];
+    }
+    const anyFreshRoad = (now) => Object.keys(live.roads).some((k) => freshLevel(live.roads[k], now) !== null);
+
     function render() {
         if (!live) return;
+        const now = Date.now();
         const launch = live.mode === 'launch';
         $('title').textContent = launch ? 'ロケット打ち上げ 混雑情報' : '巡礼スポット 混雑情報';
         document.title = 'Route 42 ' + $('title').textContent;
@@ -149,9 +185,11 @@
         const box = $('sections');
         box.textContent = '';
         if (launch) {
+            box.append(...roadSection(now));
             box.append(...section('見学場（空いている順）', SPOTS.launch.filter((s) => s.kind === 'viewing')));
             box.append(...section('臨時駐車場（空いている順）', SPOTS.launch.filter((s) => s.kind === 'parking')));
         } else {
+            if (anyFreshRoad(now)) box.append(...roadSection(now));
             box.append(...section('札所（空いている順）', SPOTS.pilgrim));
         }
         $('updated').textContent = (live.updatedAt ? '最終更新 ' + formatClock(live.updatedAt) : '情報未入力') +

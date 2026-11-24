@@ -16,6 +16,16 @@ export const LEVELS = [
     { label: '混雑・満員', short: '満', color: '#8f2a1e' }
 ];
 
+export const ROAD_LEVELS = [
+    { label: '順調', short: '順', color: '#2a7f6f' },
+    { label: '混雑', short: '混', color: '#b35a16' },
+    { label: '渋滞', short: '渋', color: '#8f2a1e' },
+    { label: '通行止め', short: '止', color: '#1a1a1a' }
+];
+
+// 道路の入力キー: <区間ID>__<方向番号>
+export function roadKey(roadId, dir) { return roadId + '__' + dir; }
+
 export const LAUNCH_STATES = {
     scheduled: '打ち上げ予定',
     countdown: 'カウントダウン中',
@@ -33,6 +43,7 @@ export function defaultLive() {
         mode: 'normal',
         launch: { state: 'scheduled', time: '', note: '' },
         spots: {},
+        roads: {},
         notice: null,
         updatedAt: 0,
         exists: false
@@ -71,6 +82,11 @@ function normalizeLive(d, toMs) {
         const s = d.spots[k];
         if (s && isValidLevel(s.level)) spots[k] = { level: s.level, at: toMs(s.at), by: s.by || '' };
     });
+    const roads = {};
+    Object.keys(d.roads || {}).forEach(function (k) {
+        const s = d.roads[k];
+        if (s && isValidLevel(s.level)) roads[k] = { level: s.level, at: toMs(s.at), by: s.by || '' };
+    });
     const l = d.launch || {};
     return {
         mode: d.mode === 'launch' ? 'launch' : 'normal',
@@ -80,6 +96,7 @@ function normalizeLive(d, toMs) {
             note: typeof l.note === 'string' ? l.note : ''
         },
         spots: spots,
+        roads: roads,
         notice: d.notice && d.notice.text ? { text: String(d.notice.text), at: toMs(d.notice.at), by: d.notice.by || '' } : null,
         updatedAt: toMs(d.updatedAt),
         exists: true
@@ -88,12 +105,16 @@ function normalizeLive(d, toMs) {
 
 // 公開用には入力者名を含めない
 function toPublic(l) {
-    const spots = {};
-    Object.keys(l.spots).forEach(function (k) { spots[k] = { level: l.spots[k].level, at: l.spots[k].at }; });
+    const strip = function (src) {
+        const o = {};
+        Object.keys(src || {}).forEach(function (k) { o[k] = { level: src[k].level, at: src[k].at }; });
+        return o;
+    };
     return {
         mode: l.mode,
         launch: l.launch,
-        spots: spots,
+        spots: strip(l.spots),
+        roads: strip(l.roads),
         notice: l.notice ? { text: l.notice.text, at: l.notice.at } : null,
         updatedAt: l.updatedAt
     };
@@ -215,6 +236,13 @@ function createDemoStore() {
             if (!isValidLevel(level)) throw new Error('不正な値');
             mutate(function (l) { l.spots[spotId] = { level: level, at: Date.now(), by: user.name }; },
                 { action: 'level', target: spotId, value: level });
+        },
+        setRoadLevel: async function (roadId, dir, level) {
+            requireRole(user, ['owner', 'staff']);
+            if (!isValidLevel(level) || !Number.isInteger(dir) || dir < 0 || dir > 1) throw new Error('不正な値');
+            const key = roadKey(roadId, dir);
+            mutate(function (l) { l.roads[key] = { level: level, at: Date.now(), by: user.name }; },
+                { action: 'road', target: key, value: level });
         },
         setNotice: async function (text) {
             requireRole(user, ['owner', 'staff']);
@@ -398,6 +426,16 @@ async function createFirebaseStore(cfg) {
                 { level: level, at: fs.serverTimestamp(), by: user.name },
                 { level: level, at: fs.serverTimestamp() }]],
                 { action: 'level', target: spotId, value: level });
+        },
+        setRoadLevel: async function (roadId, dir, level) {
+            requireRole(user, ['owner', 'staff']);
+            if (!isValidLevel(level) || !Number.isInteger(dir) || dir < 0 || dir > 1) throw new Error('不正な値');
+            const key = roadKey(roadId, dir);
+            const fs = (await loadSdk()).fs;
+            await commit([[['roads', key],
+                { level: level, at: fs.serverTimestamp(), by: user.name },
+                { level: level, at: fs.serverTimestamp() }]],
+                { action: 'road', target: key, value: level });
         },
         setNotice: async function (text) {
             requireRole(user, ['owner', 'staff']);

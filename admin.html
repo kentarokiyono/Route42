@@ -139,6 +139,7 @@
             <div class="tabs" role="tablist">
                 <button type="button" role="tab" id="tabLaunch" aria-selected="true">打ち上げ</button>
                 <button type="button" role="tab" id="tabPilgrim" aria-selected="false">巡礼</button>
+                <button type="button" role="tab" id="tabRoads" aria-selected="false">道路</button>
             </div>
             <div id="spotList"></div>
         </section>
@@ -169,7 +170,7 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
-    import { createStore, LEVELS, LAUNCH_STATES, freshLevel, formatClock } from './js/store.js';
+    import { createStore, LEVELS, ROAD_LEVELS, LAUNCH_STATES, roadKey, freshLevel, formatClock } from './js/store.js';
 
     const $ = (id) => document.getElementById(id);
     const SPOTS = await fetch('data/spots.json').then((r) => r.json());
@@ -192,6 +193,11 @@
         catch (e) { console.error(e); toast('失敗：' + (e && e.message ? e.message : e)); }
     }
     const isOwner = () => user && user.role === 'owner';
+    const roadName = (key) => {
+        const [id, d] = String(key).split('__');
+        const r = (SPOTS.roads || []).find((x) => x.id === id);
+        return r ? r.name + '（' + (r.dirs[Number(d)] || '') + '）' : key;
+    };
     const spotName = (id) => {
         const s = SPOTS.launch.concat(SPOTS.pilgrim).find((x) => x.id === id);
         return s ? s.name : id;
@@ -269,13 +275,32 @@
         renderSpots();
     }
 
+    // 入力行: スポット or 道路（区間×方向）
+    function inputRows() {
+        if (spotTab === 'roads') {
+            const rows = [];
+            (SPOTS.roads || []).forEach((r) => r.dirs.forEach((dirName, d) => {
+                const name = r.name + '（' + dirName + '）';
+                rows.push({ name, entry: live.roads[roadKey(r.id, d)], levels: ROAD_LEVELS,
+                    set: (i) => {
+                        if (i === 3 && !confirm(name + ' を「通行止め」として配信しますか？')) return;
+                        run(() => store.setRoadLevel(r.id, d, i), name + '：' + ROAD_LEVELS[i].label);
+                    } });
+            }));
+            return rows;
+        }
+        return (spotTab === 'launch' ? SPOTS.launch : SPOTS.pilgrim).filter((s) => s.kind !== 'site')
+            .map((s) => ({ name: s.name, entry: live.spots[s.id], levels: LEVELS,
+                set: (i) => run(() => store.setSpotLevel(s.id, i), s.name + '：' + LEVELS[i].label) }));
+    }
+
     function renderSpots() {
         const wrap = $('spotList');
         wrap.textContent = '';
-        const spots = (spotTab === 'launch' ? SPOTS.launch : SPOTS.pilgrim).filter((s) => s.kind !== 'site');
         const now = Date.now();
-        spots.forEach((s) => {
-            const e = live.spots[s.id];
+        inputRows().forEach((s) => {
+            const e = s.entry;
+            const LV = s.levels;
             const fresh = freshLevel(e, now);
             const box = document.createElement('div');
             box.className = 'spot';
@@ -288,7 +313,7 @@
             const meta = document.createElement('span');
             meta.className = 'spot-meta';
             if (e) {
-                meta.textContent = LEVELS[e.level].label + ' ・ ' + formatClock(e.at) + ' ' + e.by;
+                meta.textContent = LV[e.level].label + ' ・ ' + formatClock(e.at) + ' ' + e.by;
                 if (fresh === null) { meta.classList.add('stale'); meta.textContent += '（古い・利用者には非表示）'; }
             } else {
                 meta.textContent = '未入力';
@@ -297,14 +322,14 @@
 
             const seg = document.createElement('div');
             seg.className = 'seg';
-            LEVELS.forEach((lv, i) => {
+            LV.forEach((lv, i) => {
                 const b = document.createElement('button');
                 b.type = 'button';
                 b.textContent = lv.label;
                 const on = fresh === i;
                 b.setAttribute('aria-pressed', String(on));
                 if (on) b.style.background = lv.color;
-                b.addEventListener('click', () => run(() => store.setSpotLevel(s.id, i), s.name + '：' + lv.label));
+                b.addEventListener('click', () => s.set(i));
                 seg.append(b);
             });
             box.append(head, seg);
@@ -324,6 +349,7 @@
             const txt = document.createElement('span');
             let what = '';
             if (g.action === 'level') what = spotName(g.target) + ' → ' + (LEVELS[Number(g.value)] || {}).label;
+            else if (g.action === 'road') what = roadName(g.target) + ' → ' + (ROAD_LEVELS[Number(g.value)] || {}).label;
             else if (g.action === 'notice') what = g.value ? 'お知らせ：' + g.value : 'お知らせを消去';
             else if (g.action === 'mode') what = 'モード → ' + (g.value === 'launch' ? '打ち上げ' : '通常');
             else if (g.action === 'launch') what = '打ち上げ状況 → ' + (LAUNCH_STATES[g.target] || g.target) + ' ' + g.value;
@@ -401,10 +427,12 @@
         spotTab = t;
         $('tabLaunch').setAttribute('aria-selected', String(t === 'launch'));
         $('tabPilgrim').setAttribute('aria-selected', String(t === 'pilgrim'));
+        $('tabRoads').setAttribute('aria-selected', String(t === 'roads'));
         if (live) renderSpots();
     }
     $('tabLaunch').addEventListener('click', () => setSpotTab('launch'));
     $('tabPilgrim').addEventListener('click', () => setSpotTab('pilgrim'));
+    $('tabRoads').addEventListener('click', () => setSpotTab('roads'));
 
     $('addAdmin').addEventListener('submit', (e) => {
         e.preventDefault();

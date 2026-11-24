@@ -36,6 +36,7 @@
         .marker-seal { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; background: var(--paper); color: var(--shu); border: 2px solid var(--shu); box-shadow: 0 1px 4px rgba(60,40,20,0.25); }
         .marker.site .marker-seal { background: var(--ink); color: #fff; border-color: var(--ink); }
         .marker.report .marker-seal { border-radius: 50%; background: var(--warn); border-color: #fff; color: #fff; }
+        .marker.road .marker-seal { width: 26px; height: 26px; border-radius: 50%; background: #fff; border-color: var(--ink); color: var(--ink); font-size: 12px; }
         .marker.current .marker-seal { transform: scale(1.2); box-shadow: 0 0 0 5px rgba(184,58,43,0.2); }
         .marker-label { margin-top: 2px; font-size: 11px; font-weight: 500; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; white-space: nowrap; }
         .cong { position: absolute; top: -6px; right: -2px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 1.5px solid #fff; }
@@ -52,6 +53,11 @@
         .levels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
         .levels button { min-height: 52px; border-radius: 10px; border: 2px solid #cfc3ad; background: #fff; font-size: 15px; font-weight: 700; color: var(--ink); }
         .levels button[aria-pressed="true"] { color: #fff; border-color: transparent; }
+        .dir { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+        .dir-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+        .dir-name { font-weight: 700; }
+        .levels.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .levels.four button { min-height: 48px; font-size: 14px; }
         .btn { min-height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 15px; font-weight: 700; text-decoration: none; border: 1.5px solid var(--shu); background: #fff; color: var(--shu); }
         .btn-primary { background: var(--shu); color: #fff; }
         textarea { width: 100%; min-height: 90px; padding: 8px 10px; border: 1px solid #cfc3ad; border-radius: 8px; font-size: 15px; resize: vertical; }
@@ -109,6 +115,15 @@
         <a class="btn" id="spotNav" target="_blank" rel="noopener">Google マップでナビ</a>
     </section>
 
+    <!-- 道路 -->
+    <section class="sheet" id="roadSheet" aria-label="道路状況" aria-hidden="true">
+        <div class="sheet-top">
+            <h2 class="sheet-title" id="roadName"></h2>
+            <button class="icon-btn" type="button" data-close aria-label="閉じる">×</button>
+        </div>
+        <div id="roadDirs"></div>
+    </section>
+
     <!-- 報告詳細 -->
     <section class="sheet" id="reportSheet" aria-label="現場報告" aria-hidden="true">
         <div class="sheet-top">
@@ -154,7 +169,7 @@
 </div>
 
 <script type="module">
-    import { createStore, LEVELS, LAUNCH_STATES, freshLevel, formatClock, formatLaunchTime } from './js/store.js';
+    import { createStore, LEVELS, ROAD_LEVELS, LAUNCH_STATES, roadKey, freshLevel, formatClock, formatLaunchTime } from './js/store.js';
 
     mapboxgl.accessToken = 'pk.eyJ1Ijoia2VudGFyb3dreW10b3VyaXNtIiwiYSI6ImNtbGVzZTZpOTFvNHkzZW9mY2R0aHQ2a3UifQ.E9eZXhlwt6vC0yNkoX3QcA';
 
@@ -164,8 +179,19 @@
 
     let user = null, live = null, reports = [];
     let set = 'launch';
-    let spotMarkers = [], reportMarkers = [];
-    let current = null; // { type: 'spot'|'report', id }
+    let spotMarkers = [], reportMarkers = [], roadMarkers = [];
+    let current = null; // { type: 'spot'|'road'|'report', id }
+    const ROADS = SPOTS.roads || [];
+    const roadById = (id) => ROADS.find((r) => r.id === id);
+    // 区間内で最も悪い（新しい情報のみ）
+    function roadWorst(r, now) {
+        let worst = null;
+        r.dirs.forEach((_, d) => {
+            const lv = live ? freshLevel(live.roads[roadKey(r.id, d)], now) : null;
+            if (lv !== null && (worst === null || lv > worst)) worst = lv;
+        });
+        return worst;
+    }
     let mapReady = false;
     const unsubs = [];
 
@@ -215,6 +241,32 @@
         });
     }
 
+    function roadFeatures(now) {
+        return {
+            type: 'FeatureCollection',
+            features: ROADS.map((r) => {
+                const lv = roadWorst(r, now);
+                return { type: 'Feature', properties: { color: lv === null ? '#9a9184' : ROAD_LEVELS[lv].color },
+                    geometry: { type: 'LineString', coordinates: r.coords } };
+            })
+        };
+    }
+    function buildRoads() {
+        map.addSource('roads', { type: 'geojson', data: roadFeatures(Date.now()) });
+        map.addLayer({ id: 'roads-casing', type: 'line', source: 'roads',
+            layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 9 } });
+        map.addLayer({ id: 'roads-line', type: 'line', source: 'roads',
+            layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': 5 } });
+        roadMarkers = ROADS.map((r) => {
+            const m = makeMarker('road', '道', '', () => openRoad(r.id));
+            m.el.setAttribute('aria-label', r.name);
+            m.road = r;
+            const mid = r.coords[Math.floor(r.coords.length / 2)];
+            m.marker = new mapboxgl.Marker({ element: m.el, anchor: 'top', offset: [0, -13] }).setLngLat(mid).addTo(map);
+            return m;
+        });
+    }
+
     function buildReportMarkers() {
         reportMarkers.forEach((m) => m.marker.remove());
         reportMarkers = reports.filter((r) => r.coords).map((r) => {
@@ -245,7 +297,63 @@
             if (lv !== null) { m.badge.textContent = LEVELS[lv].short; m.badge.style.background = LEVELS[lv].color; }
             m.el.classList.toggle('current', !!current && current.type === 'spot' && current.id === m.spot.id);
         });
+        roadMarkers.forEach((m) => {
+            const lv = roadWorst(m.road, now);
+            m.badge.hidden = lv === null;
+            if (lv !== null) { m.badge.textContent = ROAD_LEVELS[lv].short; m.badge.style.background = ROAD_LEVELS[lv].color; }
+            m.el.classList.toggle('current', !!current && current.type === 'road' && current.id === m.road.id);
+        });
+        const src = mapReady && map.getSource('roads');
+        if (src) src.setData(roadFeatures(now));
         if (current && current.type === 'spot') renderSpot();
+        if (current && current.type === 'road') renderRoad();
+    }
+
+    function renderRoad() {
+        const r = roadById(current.id);
+        $('roadName').textContent = r.name;
+        const box = $('roadDirs');
+        box.textContent = '';
+        r.dirs.forEach((dirName, d) => {
+            const e = live.roads[roadKey(r.id, d)];
+            const lv = freshLevel(e);
+            const wrap = document.createElement('div');
+            wrap.className = 'dir';
+            const head = document.createElement('div');
+            head.className = 'dir-head';
+            const n = document.createElement('span');
+            n.className = 'dir-name';
+            n.textContent = dirName;
+            const cur = document.createElement('span');
+            cur.className = 'meta';
+            cur.textContent = e ? ROAD_LEVELS[e.level].label + '（' + formatClock(e.at) + ' ' + e.by + '）' + (lv === null ? ' ※古い' : '') : '未入力';
+            head.append(n, cur);
+            const btns = document.createElement('div');
+            btns.className = 'levels four';
+            ROAD_LEVELS.forEach((L, i) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = L.label;
+                b.setAttribute('aria-pressed', String(lv === i));
+                if (lv === i) b.style.background = L.color;
+                b.addEventListener('click', async () => {
+                    if (i === 3 && !confirm(r.name + '（' + dirName + '）を「通行止め」として配信しますか？')) return;
+                    try { await store.setRoadLevel(r.id, d, i); }
+                    catch (err) { alert('入力できませんでした：' + err.message); }
+                });
+                btns.append(b);
+            });
+            wrap.append(head, btns);
+            box.append(wrap);
+        });
+    }
+
+    function openRoad(id) {
+        current = { type: 'road', id };
+        openSheet('roadSheet');
+        render();
+        const r = roadById(id);
+        map.flyTo({ center: r.coords[Math.floor(r.coords.length / 2)], zoom: 13, padding: { top: $('header').offsetHeight, bottom: $('roadSheet').offsetHeight, left: 0, right: 0 } });
     }
 
     function renderSpot() {
@@ -416,6 +524,7 @@
 
     map.on('load', () => {
         mapReady = true;
+        buildRoads();
         buildSpotMarkers();
         buildReportMarkers();
         render();
