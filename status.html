@@ -6,10 +6,10 @@
     <title>Route 42 混雑情報</title>
     <meta name="description" content="串本町・那智勝浦町周辺の見学場・駐車場の混雑情報">
     <style>
-        /* 回線が混んでも開けるよう、外部フォント・地図・SDK は読み込まない */
+        /* 回線が混んでも開けるよう、外部フォント・地図・SDK は読み込まない。フォントは Apple 端末の標準（SF・ヒラギノ） */
         :root { --washi: #f3ede1; --paper: #faf6ee; --ink: #1a1a1a; --ink-sub: #5a5248; --shu: #b83a2b; --line: #e3d9c6; }
         * { box-sizing: border-box; }
-        body { margin: 0; background: var(--washi); color: var(--ink); font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 15px; line-height: 1.6; }
+        body { margin: 0; background: var(--washi); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif; font-size: 15px; line-height: 1.6; }
         [hidden] { display: none !important; }
         main { max-width: 640px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px; }
         h1 { margin: 0; font-size: 20px; letter-spacing: 0.05em; }
