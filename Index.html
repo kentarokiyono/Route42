@@ -25,25 +25,36 @@
         * { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--washi); color: var(--ink); font-family: var(--sans); }
         button { font-family: inherit; cursor: pointer; }
+        [hidden] { display: none !important; }
         #app { position: relative; width: 100%; height: 100vh; height: 100dvh; }
         #map { position: absolute; top: 0; left: 0; right: 0; bottom: var(--nav-h); }
 
         /* header */
-        header { position: absolute; top: 0; left: 0; right: 0; z-index: 100; padding: calc(16px + env(safe-area-inset-top)) 16px 28px; display: flex; justify-content: space-between; align-items: flex-start; background: linear-gradient(var(--washi) 55%, rgba(243,237,225,0)); pointer-events: none; }
+        header { position: absolute; top: 0; left: 0; right: 0; z-index: 100; padding: calc(16px + env(safe-area-inset-top)) 16px 24px; background: linear-gradient(var(--washi) 60%, rgba(243,237,225,0)); pointer-events: none; display: flex; flex-direction: column; gap: 8px; }
+        .head-row { display: flex; justify-content: space-between; align-items: flex-start; }
         .brand-sub { display: block; font-size: 11px; letter-spacing: 0.2em; color: var(--ink-sub); }
         .brand-title { margin: 0; font-family: var(--mincho); font-size: 24px; font-weight: 700; letter-spacing: 0.08em; }
         .progress { pointer-events: auto; display: flex; flex-direction: column; align-items: center; padding: 6px 12px; border: 1.5px solid var(--shu); border-radius: 6px; color: var(--shu); background: var(--washi); }
         .progress-num { font-family: var(--mincho); font-size: 18px; font-weight: 700; line-height: 1.1; }
         .progress-num small { font-size: 12px; }
         .progress-label { font-size: 10px; letter-spacing: 0.1em; }
-        .mapboxgl-ctrl-top-right { top: calc(84px + env(safe-area-inset-top)); }
+        .banner { pointer-events: auto; display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 8px; background: var(--ink); color: #fff; font-size: 13px; }
+        .banner strong { font-size: 15px; letter-spacing: 0.05em; }
+        .banner.alert { background: var(--shu); }
+        .banner-sub { font-size: 12px; opacity: 0.9; }
+        .notice { pointer-events: auto; padding: 8px 12px; border-radius: 8px; background: var(--paper); border: 1px solid var(--shu); font-size: 13px; line-height: 1.6; color: var(--ink); white-space: pre-line; }
+        .notice small { display: block; color: var(--ink-sub); font-size: 11px; }
+        .mapboxgl-ctrl-top-right { top: var(--ctrl-top, calc(84px + env(safe-area-inset-top))); }
 
         /* markers */
-        .marker { display: flex; flex-direction: column; align-items: center; background: none; border: none; padding: 0; min-width: 44px; min-height: 44px; }
+        .marker { position: relative; display: flex; flex-direction: column; align-items: center; background: none; border: none; padding: 0; min-width: 44px; min-height: 44px; }
         .marker-seal { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mincho); font-size: 14px; font-weight: 700; background: var(--paper); color: var(--shu); border: 2px solid var(--shu); box-shadow: 0 1px 4px rgba(60,40,20,0.25); transition: transform .15s; }
+        .marker.square .marker-seal { border-radius: 6px; font-family: var(--sans); }
+        .marker.site .marker-seal { background: var(--ink); color: #fff; border-color: var(--ink); }
         .marker.visited .marker-seal { background: var(--shu); color: #fff; }
         .marker.current .marker-seal { transform: scale(1.25); box-shadow: 0 0 0 6px rgba(184,58,43,0.2); }
         .marker-label { margin-top: 3px; font-size: 11px; font-weight: 500; color: var(--ink); text-shadow: 0 0 3px var(--paper), 0 0 3px var(--paper), 0 0 3px var(--paper); white-space: nowrap; }
+        .cong { position: absolute; top: -6px; right: -4px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 1.5px solid #fff; }
 
         /* bottom sheet */
         .sheet { position: absolute; left: 0; right: 0; bottom: var(--nav-h); z-index: 150; max-height: calc(100dvh - var(--nav-h) - 120px); overflow-y: auto; background: var(--paper); border-radius: 20px 20px 0 0; box-shadow: 0 -4px 20px rgba(60,40,20,0.12); padding: 10px 20px 18px; display: flex; flex-direction: column; gap: 12px; transform: translateY(110%); transition: transform .25s ease; }
@@ -55,11 +66,16 @@
         .seal-lg { width: 48px; height: 48px; flex-shrink: 0; border-radius: 50%; border: 2px solid var(--shu); display: flex; align-items: center; justify-content: center; font-family: var(--mincho); font-size: 22px; font-weight: 700; color: var(--shu); }
         .seal-lg.visited { background: var(--shu); color: #fff; }
         .spot-meta { font-size: 11px; color: var(--ink-sub); letter-spacing: 0.1em; }
-        .spot-title { margin: 0; font-family: var(--mincho); font-size: 28px; font-weight: 700; letter-spacing: 0.1em; }
+        .spot-title { margin: 0; font-family: var(--mincho); font-size: 26px; font-weight: 700; letter-spacing: 0.08em; }
         .spot-desc { margin: 0; font-size: 14px; line-height: 1.8; color: #2e2a25; }
-        .leg { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 4px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 12px; color: var(--ink-sub); }
-        .leg strong { color: var(--ink); }
-        .leg-val { white-space: nowrap; }
+        .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 4px; border-top: 1px solid var(--line); font-size: 12px; color: var(--ink-sub); }
+        .row:last-of-type { border-bottom: 1px solid var(--line); }
+        .row strong { color: var(--ink); }
+        .row-val { white-space: nowrap; }
+        .pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 12px; color: #fff; font-size: 12px; font-weight: 700; }
+        .pill.none { background: #e3d9c6; color: var(--ink-sub); }
+        .guide { padding: 10px 12px; border-radius: 8px; background: #fff3e8; border: 1px solid #e8c2a0; font-size: 13px; line-height: 1.6; display: flex; flex-direction: column; gap: 8px; }
+        .guide button { align-self: flex-start; min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1.5px solid var(--shu); background: #fff; color: var(--shu); font-weight: 700; font-size: 13px; }
         .stamps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .stamps-label { font-size: 11px; color: var(--ink-sub); margin-right: 4px; }
         .stamp { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mincho); font-size: 12px; font-weight: 700; border: 1px solid #cfc3ad; color: var(--ink-mute); background: none; padding: 0; }
@@ -73,9 +89,9 @@
         .pager { display: flex; justify-content: space-between; }
         .pager button { min-height: 44px; padding: 0 8px; border: none; background: none; color: var(--ink-sub); font-size: 13px; }
         .pager button:disabled { visibility: hidden; }
-        .route-link { font-size: 12px; color: var(--shu); }
+        .route-link { font-size: 12px; color: var(--shu); align-self: center; }
 
-        /* 御朱印帳 panel */
+        /* list panel */
         .book { position: absolute; top: 0; left: 0; right: 0; bottom: var(--nav-h); z-index: 160; background: var(--washi); overflow-y: auto; padding: calc(20px + env(safe-area-inset-top)) 20px 20px; display: none; }
         .book.open { display: block; }
         .book h2 { margin: 0 0 4px; font-family: var(--mincho); font-size: 24px; letter-spacing: 0.1em; }
@@ -83,6 +99,7 @@
         .book-list { list-style: none; margin: 0; padding: 0; }
         .book-item { width: 100%; display: flex; align-items: center; gap: 14px; padding: 12px 4px; background: none; border: none; border-bottom: 1px solid var(--line); text-align: left; color: var(--ink); }
         .book-item .seal-lg { width: 40px; height: 40px; font-size: 18px; }
+        .book-item .grow { flex: 1; min-width: 0; }
         .book-name { font-family: var(--mincho); font-size: 18px; font-weight: 700; }
         .book-leg { font-size: 11px; color: var(--ink-sub); }
 
@@ -95,20 +112,27 @@
 </head>
 <body>
 <div id="app">
-    <div id="map" role="region" aria-label="ルート地図"></div>
+    <div id="map" role="region" aria-label="地図"></div>
 
-    <header>
-        <div>
-            <span class="brand-sub">南紀 巡礼の道</span>
-            <h1 class="brand-title">国道四十二号</h1>
+    <header id="header">
+        <div class="head-row">
+            <div>
+                <span class="brand-sub" id="brandSub">南紀 巡礼の道</span>
+                <h1 class="brand-title" id="brandTitle">国道四十二号</h1>
+            </div>
+            <div class="progress" id="progress" aria-live="polite">
+                <span class="progress-num"><span id="visitedCount">〇</span><small> / <span id="spotTotal">七</span></small></span>
+                <span class="progress-label">参拝済</span>
+            </div>
         </div>
-        <div class="progress" aria-live="polite">
-            <span class="progress-num"><span id="visitedCount">〇</span><small> / 七</small></span>
-            <span class="progress-label">参拝済</span>
+        <div class="banner" id="launchBanner" aria-live="polite" hidden>
+            <strong id="launchState"></strong>
+            <span class="banner-sub" id="launchSub"></span>
         </div>
+        <div class="notice" id="notice" aria-live="polite" hidden></div>
     </header>
 
-    <section class="sheet" id="sheet" aria-label="札所の詳細" aria-hidden="true">
+    <section class="sheet" id="sheet" aria-label="スポットの詳細" aria-hidden="true">
         <div class="sheet-top">
             <span style="width:44px"></span>
             <div class="handle"></div>
@@ -122,24 +146,34 @@
             </div>
         </div>
         <p class="spot-desc" id="spotDesc"></p>
-        <div class="leg" id="leg">
-            <span id="legLabel"></span>
-            <span class="leg-val" id="legVal"></span>
+        <div>
+            <div class="row">
+                <span>混雑状況</span>
+                <span class="row-val" id="congVal"></span>
+            </div>
+            <div class="row" id="legRow">
+                <span id="legLabel"></span>
+                <span class="row-val" id="legVal"></span>
+            </div>
+        </div>
+        <div class="guide" id="guide" hidden>
+            <span id="guideText"></span>
+            <button type="button" id="guideBtn"></button>
         </div>
         <div class="stamps" id="stamps"><span class="stamps-label">御朱印</span></div>
         <div class="actions">
             <a class="btn btn-primary" id="navLink" target="_blank" rel="noopener">ナビ開始</a>
             <button class="btn btn-outline" type="button" id="visitBtn">参拝する（押印）</button>
         </div>
-        <div class="pager">
+        <div class="pager" id="pager">
             <button type="button" id="prevBtn">‹ 前の札所</button>
-            <a class="route-link" id="nextRouteLink" target="_blank" rel="noopener" style="align-self:center">次の札所への道順</a>
+            <a class="route-link" id="nextRouteLink" target="_blank" rel="noopener">次の札所への道順</a>
             <button type="button" id="nextBtn">次の札所 ›</button>
         </div>
     </section>
 
-    <section class="book" id="book" aria-label="御朱印帳">
-        <h2>御朱印帳</h2>
+    <section class="book" id="book" aria-label="一覧">
+        <h2 id="bookTitle">御朱印帳</h2>
         <p class="book-total" id="bookTotal"></p>
         <ul class="book-list" id="bookList"></ul>
     </section>
@@ -151,54 +185,50 @@
         </button>
         <button class="tab" type="button" role="tab" id="tabBook" aria-selected="false">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h12a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2V3z"/><circle cx="12" cy="11" r="3.5"/></svg>
-            御朱印帳
+            <span id="tabBookLabel">御朱印帳</span>
         </button>
     </nav>
 </div>
 
-<script>
+<script type="module">
+    import { createStore, LEVELS, LAUNCH_STATES, defaultLive, freshLevel, formatClock, formatLaunchTime } from './js/store.js';
+
     mapboxgl.accessToken = 'pk.eyJ1Ijoia2VudGFyb3dreW10b3VyaXNtIiwiYSI6ImNtbGVzZTZpOTFvNHkzZW9mY2R0aHQ2a3UifQ.E9eZXhlwt6vC0yNkoX3QcA';
 
-    var NUM = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
-    var STORAGE_KEY = 'route42.visited';
+    const NUM = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+    const STORAGE_KEY = 'route42.visited';
+    const $ = (id) => document.getElementById(id);
 
-    // 巡る順。座標は [経度, 緯度]
-    var spots = [
-        { name: "枯木灘", tag: "起点", coords: [135.4851, 33.5415], desc: "ロードトリップの起点。リアス式海岸の絶景が続く、聖なる道の始まり。" },
-        { name: "海中ポスト", tag: "すさみ", coords: [135.4997, 33.5378], desc: "水深10mのポスト。冒険と想いを届ける場所。" },
-        { name: "潮岬", tag: "本州最南端", coords: [135.7625, 33.4330], desc: "本州最南端。地球の丸さを実感する、断崖の果て。" },
-        { name: "樫野埼灯台", tag: "紀伊大島", coords: [135.8622, 33.4717], desc: "日本最古の石造灯台。人類の絆を伝える聖域。" },
-        { name: "橋杭岩", tag: "串本", coords: [135.7957, 33.4882], desc: "850m続く奇岩列。地質学と伝説が交差する地。" },
-        { name: "古座川の一枚岩", tag: "寄り道・古座川", coords: [135.7392, 33.5787], desc: "高さ100mの巨岩壁。1500万年前のマグマの記憶。" },
-        { name: "太地くじらの博物館", tag: "終着", coords: [135.9450, 33.5970], desc: "終着点。海と人の共生の歴史を辿る地。" }
-    ];
+    const SPOTS = await fetch('data/spots.json').then((r) => r.json());
+    const pilgrim = SPOTS.pilgrim;
 
-    var legs = null;        // [{distance(m), duration(s)}], legs[i] = spots[i] → spots[i+1]
-    var legsFailed = false;
-    var current = -1;
-    var markers = [];
-    var visited = loadVisited();
+    let live = defaultLive();
+    let mode = 'normal';
+    let legs = null;          // legs[i] = pilgrim[i] → pilgrim[i+1]
+    let legsFailed = false;
+    let current = -1;
+    let markers = [];         // { el, marker }
+    let visited = loadVisited();
+
+    function list() { return mode === 'launch' ? SPOTS.launch : pilgrim; }
 
     function loadVisited() {
         try {
-            var v = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-            return Array.isArray(v) ? v.filter(function (i) { return Number.isInteger(i) && i >= 0 && i < spots.length; }) : [];
+            const v = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            return Array.isArray(v) ? v.filter((id) => typeof id === 'string' && pilgrim.some((s) => s.id === id)) : [];
         } catch (e) { return []; }
     }
     function saveVisited() {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(visited)); } catch (e) { /* 保存不可でも動作は継続 */ }
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(visited)); } catch (e) { /* 保存不可でも継続 */ }
     }
-    function isVisited(i) { return visited.indexOf(i) !== -1; }
+    const isVisited = (spot) => spot.kind === 'pilgrim' && visited.includes(spot.id);
 
-    function kanji(n) {
-        if (n <= 10) return n === 0 ? '〇' : NUM[n - 1];
-        return String(n);
-    }
+    function kanji(n) { return n === 0 ? '〇' : (n <= 10 ? NUM[n - 1] : String(n)); }
     function fmtDist(m) { return '約' + (m < 10000 ? (m / 1000).toFixed(1) : Math.round(m / 1000)) + 'km'; }
     function fmtTime(s) {
-        var min = Math.max(1, Math.round(s / 60));
+        const min = Math.max(1, Math.round(s / 60));
         if (min < 60) return '約' + min + '分';
-        var h = Math.floor(min / 60), r = min % 60;
+        const h = Math.floor(min / 60), r = min % 60;
         return '約' + h + '時間' + (r ? r + '分' : '');
     }
     function legText(i) {
@@ -206,12 +236,41 @@
         return legsFailed ? '—' : '計算中…';
     }
     function gmapsDir(dest, origin) {
-        var url = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + dest[1] + ',' + dest[0];
+        let url = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + dest[1] + ',' + dest[0];
         if (origin) url += '&origin=' + origin[1] + ',' + origin[0];
         return url;
     }
+    function haversineKm(a, b) {
+        const R = 6371, rad = Math.PI / 180;
+        const dLat = (b[1] - a[1]) * rad, dLng = (b[0] - a[0]) * rad;
+        const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[1] * rad) * Math.cos(b[1] * rad) * Math.sin(dLng / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(h));
+    }
+    function levelOf(spot) { return freshLevel(live.spots[spot.id]); }
+    function sealText(spot, i) {
+        if (spot.kind === 'pilgrim') return kanji(i + 1);
+        if (spot.kind === 'parking') return 'P';
+        if (spot.kind === 'site') return '射';
+        return '見';
+    }
+    const guidable = (spot) => spot.kind !== 'site';
 
-    var map = new mapboxgl.Map({
+    // 混んでいる時、同じ種類で空いている最寄り
+    function alternativeFor(i) {
+        const spot = list()[i];
+        let best = null;
+        list().forEach((s, j) => {
+            if (j === i || s.kind !== spot.kind) return;
+            const lv = levelOf(s);
+            if (lv === null || lv > 1) return;
+            const d = haversineKm(spot.coords, s.coords);
+            if (!best || d < best.d) best = { j, d, lv };
+        });
+        return best;
+    }
+
+    /* ---------- map ---------- */
+    const map = new mapboxgl.Map({
         container: 'map',
         style: 'mapbox://styles/mapbox/light-v11',
         center: [135.72, 33.51],
@@ -223,17 +282,18 @@
         showUserHeading: true
     }), 'top-right');
 
-    function fitAll() {
-        var b = new mapboxgl.LngLatBounds();
-        spots.forEach(function (s) { b.extend(s.coords); });
-        map.fitBounds(b, { padding: { top: 110, bottom: 40, left: 40, right: 40 }, duration: 0 });
+    function fitAll(animate) {
+        const b = new mapboxgl.LngLatBounds();
+        list().forEach((s) => b.extend(s.coords));
+        const top = $('header').offsetHeight + 10;
+        map.fitBounds(b, { padding: { top, bottom: 40, left: 40, right: 40 }, duration: animate ? 800 : 0, maxZoom: 13 });
     }
 
     function setRoute(coords) {
-        var data = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } };
-        var src = map.getSource('route42');
+        const data = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } };
+        const src = map.getSource('route42');
         if (src) { src.setData(data); return; }
-        map.addSource('route42', { type: 'geojson', data: data });
+        map.addSource('route42', { type: 'geojson', data });
         map.addLayer({ id: 'route42-casing', type: 'line', source: 'route42',
             layout: { 'line-join': 'round', 'line-cap': 'round' },
             paint: { 'line-color': '#ffffff', 'line-width': 7 } });
@@ -241,194 +301,347 @@
             layout: { 'line-join': 'round', 'line-cap': 'round' },
             paint: { 'line-color': '#b83a2b', 'line-width': 3.5 } });
     }
+    function setRouteVisible(v) {
+        ['route42-casing', 'route42-line'].forEach((id) => {
+            if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', v ? 'visible' : 'none');
+        });
+    }
 
-    function loadDirections() {
-        var wp = spots.map(function (s) { return s.coords[0] + ',' + s.coords[1]; }).join(';');
-        var url = 'https://api.mapbox.com/directions/v5/mapbox/driving/' + wp +
-            '?geometries=geojson&overview=full&language=ja&access_token=' + mapboxgl.accessToken;
-        fetch(url)
-            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-            .then(function (json) {
-                var route = json.routes && json.routes[0];
-                if (!route) throw new Error('no route');
-                setRoute(route.geometry.coordinates);
-                legs = route.legs.map(function (l) { return { distance: l.distance, duration: l.duration }; });
-                refresh();
-            })
-            .catch(function (err) {
-                console.warn('Directions API failed:', err);
-                legsFailed = true;
-                refresh();
-            });
+    // 事前計算済み data/route.json（tools/build-route.mjs で生成）→ なければ Directions API
+    async function loadRoute() {
+        try {
+            const r = await fetch('data/route.json');
+            if (r.ok) {
+                const j = await r.json();
+                if (Array.isArray(j.legs) && j.legs.length === pilgrim.length - 1 && Array.isArray(j.coordinates)) {
+                    setRoute(j.coordinates);
+                    legs = j.legs;
+                    setRouteVisible(mode === 'normal');
+                    render();
+                    return;
+                }
+            }
+        } catch (e) { /* フォールバック */ }
+        try {
+            const wp = pilgrim.map((s) => s.coords[0] + ',' + s.coords[1]).join(';');
+            const r = await fetch('https://api.mapbox.com/directions/v5/mapbox/driving/' + wp +
+                '?geometries=geojson&overview=full&access_token=' + mapboxgl.accessToken);
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const j = await r.json();
+            const route = j.routes && j.routes[0];
+            if (!route) throw new Error('no route');
+            setRoute(route.geometry.coordinates);
+            legs = route.legs.map((l) => ({ distance: l.distance, duration: l.duration }));
+        } catch (e) {
+            console.warn('route unavailable:', e);
+            legsFailed = true;
+        }
+        setRouteVisible(mode === 'normal');
+        render();
     }
 
     function applyWashiStyle() {
-        var set = function (layer, prop, val) {
-            if (map.getLayer(layer)) { try { map.setPaintProperty(layer, prop, val); } catch (e) {} }
+        const set = (layer, prop, val) => {
+            if (map.getLayer(layer)) { try { map.setPaintProperty(layer, prop, val); } catch (e) { /* noop */ } }
         };
         set('land', 'background-color', '#efe8da');
         set('water', 'fill-color', '#d7e1e3');
     }
 
     function buildMarkers() {
-        spots.forEach(function (spot, i) {
-            var el = document.createElement('button');
+        markers.forEach((m) => m.marker.remove());
+        markers = list().map((spot, i) => {
+            const el = document.createElement('button');
             el.type = 'button';
-            el.className = 'marker';
-            el.setAttribute('aria-label', (i + 1) + '番 ' + spot.name);
-            var seal = document.createElement('span');
+            el.className = 'marker' + (spot.kind === 'pilgrim' ? '' : ' square') + (spot.kind === 'site' ? ' site' : '');
+            const seal = document.createElement('span');
             seal.className = 'marker-seal';
-            seal.textContent = kanji(i + 1);
-            var label = document.createElement('span');
+            seal.textContent = sealText(spot, i);
+            const badge = document.createElement('span');
+            badge.className = 'cong';
+            badge.hidden = true;
+            const label = document.createElement('span');
             label.className = 'marker-label';
             label.textContent = spot.name;
-            el.appendChild(seal);
-            el.appendChild(label);
-            el.addEventListener('click', function (e) { e.stopPropagation(); openSpot(i); });
-            markers.push(el);
-            new mapboxgl.Marker({ element: el, anchor: 'top', offset: [0, -15] }).setLngLat(spot.coords).addTo(map);
+            el.append(seal, badge, label);
+            el.addEventListener('click', (e) => { e.stopPropagation(); openSpot(i); });
+            const marker = new mapboxgl.Marker({ element: el, anchor: 'top', offset: [0, -15] }).setLngLat(spot.coords).addTo(map);
+            return { el, badge, marker };
         });
     }
 
-    function refresh() {
-        document.getElementById('visitedCount').textContent = kanji(visited.length);
-        markers.forEach(function (el, i) {
-            el.classList.toggle('visited', isVisited(i));
-            el.classList.toggle('current', i === current);
+    /* ---------- render ---------- */
+    function renderHeader() {
+        const launch = mode === 'launch';
+        $('brandSub').textContent = launch ? 'ロケット打ち上げ' : '南紀 巡礼の道';
+        $('brandTitle').textContent = launch ? '見学マップ' : '国道四十二号';
+        document.title = launch ? 'Route 42 - 打ち上げ見学マップ' : 'Route 42 - 南紀 巡礼の道';
+        $('progress').hidden = launch;
+        $('visitedCount').textContent = kanji(visited.length);
+        $('spotTotal').textContent = kanji(pilgrim.length);
+
+        const banner = $('launchBanner');
+        banner.hidden = !launch;
+        if (launch) {
+            const st = live.launch.state;
+            $('launchState').textContent = LAUNCH_STATES[st];
+            const t = formatLaunchTime(live.launch.time);
+            $('launchSub').textContent = [t ? '予定 ' + t : '', live.launch.note].filter(Boolean).join(' ・ ');
+            $('launchSub').hidden = !$('launchSub').textContent;
+            banner.classList.toggle('alert', st === 'delayed' || st === 'scrubbed');
+        }
+
+        const notice = $('notice');
+        notice.hidden = !live.notice;
+        notice.textContent = '';
+        if (live.notice) {
+            notice.append(live.notice.text);
+            const small = document.createElement('small');
+            small.textContent = formatClock(live.notice.at) + ' 更新';
+            notice.append(small);
+        }
+        // 現在地ボタンをヘッダーの下に
+        document.documentElement.style.setProperty('--ctrl-top', ($('header').offsetHeight - 14) + 'px');
+    }
+
+    function renderMarkers() {
+        markers.forEach((m, i) => {
+            const spot = list()[i];
+            m.el.classList.toggle('visited', isVisited(spot));
+            m.el.classList.toggle('current', i === current);
+            const lv = guidable(spot) ? levelOf(spot) : null;
+            m.badge.hidden = lv === null;
+            if (lv !== null) {
+                m.badge.textContent = LEVELS[lv].short;
+                m.badge.style.background = LEVELS[lv].color;
+            }
+            m.el.setAttribute('aria-label', spot.name + (lv !== null ? '（' + LEVELS[lv].label + '）' : ''));
         });
-        if (current >= 0) renderSheet();
-        renderBook();
+    }
+
+    function congPill(spot) {
+        const span = document.createElement('span');
+        const lv = levelOf(spot);
+        span.className = 'pill' + (lv === null ? ' none' : '');
+        if (lv === null) {
+            span.textContent = '情報なし';
+        } else {
+            span.textContent = LEVELS[lv].label;
+            span.style.background = LEVELS[lv].color;
+        }
+        return span;
     }
 
     function renderSheet() {
-        var i = current, spot = spots[i], last = i === spots.length - 1;
-        var seal = document.getElementById('spotSeal');
-        seal.textContent = kanji(i + 1);
-        seal.classList.toggle('visited', isVisited(i));
-        document.getElementById('spotMeta').textContent = '第' + kanji(i + 1) + '番 ・ ' + spot.tag;
-        document.getElementById('spotName').textContent = spot.name;
-        document.getElementById('spotDesc').textContent = spot.desc;
+        if (current < 0) return;
+        const L = list(), i = current, spot = L[i];
+        const isPil = spot.kind === 'pilgrim';
+        const last = i === L.length - 1;
 
-        var legLabel = document.getElementById('legLabel');
-        var legVal = document.getElementById('legVal');
-        legLabel.textContent = '';
-        if (last) {
-            legLabel.textContent = '結願 — 全札所の終着';
-            legVal.textContent = '';
+        const seal = $('spotSeal');
+        seal.textContent = sealText(spot, i);
+        seal.classList.toggle('visited', isVisited(spot));
+        seal.style.borderRadius = isPil ? '50%' : '10px';
+        let meta = isPil ? '第' + kanji(i + 1) + '番 ・ ' + spot.tag : spot.tag;
+        if (spot.capacity) meta += ' ・ 収容 約' + spot.capacity.toLocaleString() + spot.unit;
+        $('spotMeta').textContent = meta;
+        $('spotName').textContent = spot.name;
+        $('spotDesc').textContent = spot.desc;
+
+        // 混雑
+        const congVal = $('congVal');
+        congVal.textContent = '';
+        if (guidable(spot)) {
+            congVal.append(congPill(spot));
+            const e = live.spots[spot.id];
+            if (levelOf(spot) !== null) congVal.append(' ' + formatClock(e.at) + ' 更新');
         } else {
-            legLabel.appendChild(document.createTextNode('次の札所 '));
-            var strong = document.createElement('strong');
-            strong.textContent = kanji(i + 2) + ' ' + spots[i + 1].name;
-            legLabel.appendChild(strong);
-            legVal.textContent = legText(i);
+            congVal.textContent = '—';
         }
 
-        var stamps = document.getElementById('stamps');
-        while (stamps.children.length > 1) stamps.removeChild(stamps.lastChild);
-        spots.forEach(function (s, j) {
-            var b = document.createElement('button');
-            b.type = 'button';
-            b.className = 'stamp' + (isVisited(j) ? ' visited' : '') + (j === i ? ' current' : '');
-            b.textContent = kanji(j + 1);
-            b.setAttribute('aria-label', (j + 1) + '番 ' + s.name + (isVisited(j) ? '（参拝済）' : ''));
-            b.addEventListener('click', function () { openSpot(j); });
-            stamps.appendChild(b);
-        });
+        // 誘導
+        const lv = levelOf(spot);
+        const alt = lv !== null && lv >= 2 ? alternativeFor(i) : null;
+        $('guide').hidden = !alt;
+        if (alt) {
+            const s = L[alt.j];
+            $('guideText').textContent = '混雑しています。近くの空いている候補：' + s.name +
+                '（直線 約' + alt.d.toFixed(1) + 'km・' + LEVELS[alt.lv].label + '）';
+            $('guideBtn').textContent = s.name + ' を見る';
+            $('guideBtn').onclick = () => openSpot(alt.j);
+        }
 
-        document.getElementById('navLink').href = gmapsDir(spot.coords);
-        var visitBtn = document.getElementById('visitBtn');
-        visitBtn.textContent = isVisited(i) ? '参拝済（取り消す）' : '参拝する（押印）';
-        visitBtn.classList.toggle('done', isVisited(i));
+        // 巡礼専用
+        $('legRow').hidden = !isPil;
+        $('stamps').hidden = !isPil;
+        $('visitBtn').hidden = !isPil;
+        $('pager').hidden = !isPil;
+        if (isPil) {
+            const legLabel = $('legLabel');
+            legLabel.textContent = '';
+            if (last) {
+                legLabel.textContent = '結願 — 全札所の終着';
+                $('legVal').textContent = '';
+            } else {
+                legLabel.append('次の札所 ');
+                const strong = document.createElement('strong');
+                strong.textContent = kanji(i + 2) + ' ' + L[i + 1].name;
+                legLabel.append(strong);
+                $('legVal').textContent = legText(i);
+            }
+            const stamps = $('stamps');
+            while (stamps.children.length > 1) stamps.removeChild(stamps.lastChild);
+            L.forEach((s, j) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'stamp' + (isVisited(s) ? ' visited' : '') + (j === i ? ' current' : '');
+                b.textContent = kanji(j + 1);
+                b.setAttribute('aria-label', (j + 1) + '番 ' + s.name + (isVisited(s) ? '（参拝済）' : ''));
+                b.addEventListener('click', () => openSpot(j));
+                stamps.append(b);
+            });
+            $('visitBtn').textContent = isVisited(spot) ? '参拝済（取り消す）' : '参拝する（押印）';
+            $('visitBtn').classList.toggle('done', isVisited(spot));
+            $('prevBtn').disabled = i === 0;
+            $('nextBtn').disabled = last;
+            $('nextRouteLink').style.visibility = last ? 'hidden' : 'visible';
+            if (!last) $('nextRouteLink').href = gmapsDir(L[i + 1].coords, spot.coords);
+        }
 
-        document.getElementById('prevBtn').disabled = i === 0;
-        document.getElementById('nextBtn').disabled = last;
-        var routeLink = document.getElementById('nextRouteLink');
-        routeLink.style.visibility = last ? 'hidden' : 'visible';
-        if (!last) routeLink.href = gmapsDir(spots[i + 1].coords, spot.coords);
+        const nav = $('navLink');
+        nav.hidden = spot.kind === 'site';
+        nav.href = gmapsDir(spot.coords);
     }
 
     function renderBook() {
-        var total = document.getElementById('bookTotal');
-        if (legs) {
-            var d = 0, t = 0;
-            legs.forEach(function (l) { d += l.distance; t += l.duration; });
-            total.textContent = '全' + spots.length + '札所 ・ 全行程 ' + fmtDist(d) + '・' + fmtTime(t) + '（車）';
-        } else {
-            total.textContent = '全' + spots.length + '札所 ・ 全行程 ' + (legsFailed ? '—' : '計算中…');
+        const launch = mode === 'launch';
+        $('bookTitle').textContent = launch ? '混雑一覧' : '御朱印帳';
+        $('tabBookLabel').textContent = launch ? '混雑一覧' : '御朱印帳';
+        const total = $('bookTotal');
+        const listEl = $('bookList');
+        listEl.textContent = '';
+
+        if (launch) {
+            total.textContent = '空いている順 ・ ' + (live.updatedAt ? '最終更新 ' + formatClock(live.updatedAt) : '情報未入力');
+            const items = SPOTS.launch.map((s, i) => ({ s, i, lv: levelOf(s) }))
+                .filter((x) => guidable(x.s))
+                .sort((a, b) => (a.lv === null ? 9 : a.lv) - (b.lv === null ? 9 : b.lv) || a.s.kind.localeCompare(b.s.kind));
+            items.forEach(({ s, i }) => listEl.append(bookItem(s, i, s.tag + (s.capacity ? ' ・ 収容 約' + s.capacity.toLocaleString() + s.unit : ''))));
+            return;
         }
-        var list = document.getElementById('bookList');
-        list.textContent = '';
-        spots.forEach(function (s, i) {
-            var li = document.createElement('li');
-            var b = document.createElement('button');
-            b.type = 'button';
-            b.className = 'book-item';
-            var seal = document.createElement('span');
-            seal.className = 'seal-lg' + (isVisited(i) ? ' visited' : '');
-            seal.textContent = kanji(i + 1);
-            var txt = document.createElement('span');
-            var name = document.createElement('div');
-            name.className = 'book-name';
-            name.textContent = s.name;
-            var leg = document.createElement('div');
-            leg.className = 'book-leg';
-            leg.textContent = (isVisited(i) ? '参拝済' : '未参拝') + (i < spots.length - 1 ? ' ・ 次まで ' + legText(i) : ' ・ 終着');
-            txt.appendChild(name);
-            txt.appendChild(leg);
-            b.appendChild(seal);
-            b.appendChild(txt);
-            b.addEventListener('click', function () { showTab('map'); openSpot(i); });
-            li.appendChild(b);
-            list.appendChild(li);
+
+        if (legs) {
+            let d = 0, t = 0;
+            legs.forEach((l) => { d += l.distance; t += l.duration; });
+            total.textContent = '全' + pilgrim.length + '札所 ・ 全行程 ' + fmtDist(d) + '・' + fmtTime(t) + '（車）';
+        } else {
+            total.textContent = '全' + pilgrim.length + '札所 ・ 全行程 ' + (legsFailed ? '—' : '計算中…');
+        }
+        pilgrim.forEach((s, i) => {
+            const sub = (isVisited(s) ? '参拝済' : '未参拝') + (i < pilgrim.length - 1 ? ' ・ 次まで ' + legText(i) : ' ・ 終着');
+            listEl.append(bookItem(s, i, sub));
         });
     }
 
+    function bookItem(s, i, sub) {
+        const li = document.createElement('li');
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'book-item';
+        const seal = document.createElement('span');
+        seal.className = 'seal-lg' + (isVisited(s) ? ' visited' : '');
+        if (s.kind !== 'pilgrim') seal.style.borderRadius = '10px';
+        seal.textContent = sealText(s, i);
+        const txt = document.createElement('span');
+        txt.className = 'grow';
+        const name = document.createElement('div');
+        name.className = 'book-name';
+        name.textContent = s.name;
+        const leg = document.createElement('div');
+        leg.className = 'book-leg';
+        leg.textContent = sub;
+        txt.append(name, leg);
+        b.append(seal, txt, congPill(s));
+        b.addEventListener('click', () => { showTab('map'); openSpot(i); });
+        li.append(b);
+        return li;
+    }
+
+    function render() {
+        renderHeader();
+        renderMarkers();
+        renderSheet();
+        renderBook();
+    }
+
+    /* ---------- actions ---------- */
     function openSpot(i) {
         current = i;
-        var sheet = document.getElementById('sheet');
+        const sheet = $('sheet');
         sheet.classList.add('open');
         sheet.setAttribute('aria-hidden', 'false');
-        refresh();
-        var h = sheet.offsetHeight;
-        map.flyTo({ center: spots[i].coords, zoom: 13, padding: { top: 100, bottom: h, left: 0, right: 0 } });
+        render();
+        map.flyTo({ center: list()[i].coords, zoom: 13, padding: { top: $('header').offsetHeight, bottom: sheet.offsetHeight, left: 0, right: 0 } });
     }
-
     function closeSheet() {
         current = -1;
-        var sheet = document.getElementById('sheet');
-        sheet.classList.remove('open');
-        sheet.setAttribute('aria-hidden', 'true');
-        refresh();
+        $('sheet').classList.remove('open');
+        $('sheet').setAttribute('aria-hidden', 'true');
+        render();
     }
-
     function showTab(name) {
-        document.getElementById('tabMap').setAttribute('aria-selected', name === 'map');
-        document.getElementById('tabBook').setAttribute('aria-selected', name === 'book');
-        document.getElementById('book').classList.toggle('open', name === 'book');
+        $('tabMap').setAttribute('aria-selected', String(name === 'map'));
+        $('tabBook').setAttribute('aria-selected', String(name === 'book'));
+        $('book').classList.toggle('open', name === 'book');
+    }
+    function applyMode(next) {
+        if (next === mode && markers.length) return;
+        mode = next;
+        closeSheet();
+        buildMarkers();
+        setRouteVisible(mode === 'normal');
+        render();
+        fitAll(true);
     }
 
-    document.getElementById('closeSheet').addEventListener('click', closeSheet);
-    document.getElementById('prevBtn').addEventListener('click', function () { if (current > 0) openSpot(current - 1); });
-    document.getElementById('nextBtn').addEventListener('click', function () { if (current < spots.length - 1) openSpot(current + 1); });
-    document.getElementById('visitBtn').addEventListener('click', function () {
+    $('closeSheet').addEventListener('click', closeSheet);
+    $('prevBtn').addEventListener('click', () => { if (current > 0) openSpot(current - 1); });
+    $('nextBtn').addEventListener('click', () => { if (current < list().length - 1) openSpot(current + 1); });
+    $('visitBtn').addEventListener('click', () => {
         if (current < 0) return;
-        var k = visited.indexOf(current);
-        if (k === -1) visited.push(current); else visited.splice(k, 1);
+        const spot = list()[current];
+        if (spot.kind !== 'pilgrim') return;
+        visited = isVisited(spot) ? visited.filter((id) => id !== spot.id) : visited.concat(spot.id);
         saveVisited();
-        refresh();
+        render();
     });
-    document.getElementById('tabMap').addEventListener('click', function () { showTab('map'); });
-    document.getElementById('tabBook').addEventListener('click', function () { closeSheet(); showTab('book'); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSheet(); });
+    $('tabMap').addEventListener('click', () => showTab('map'));
+    $('tabBook').addEventListener('click', () => { closeSheet(); showTab('book'); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
     map.on('click', closeSheet);
 
-    map.on('load', function () {
+    /* ---------- boot ---------- */
+    const store = await createStore();
+    let mapReady = false;
+    let pendingMode = 'normal';
+
+    store.subscribeLive((l) => {
+        live = l;
+        pendingMode = l.mode;
+        if (!mapReady) return;
+        if (l.mode !== mode) applyMode(l.mode); else render();
+    }, (err) => console.warn('live subscribe failed:', err));
+
+    // 鮮度判定を定期的に更新
+    setInterval(() => { if (mapReady) render(); }, 60 * 1000);
+
+    map.on('load', () => {
         applyWashiStyle();
-        setRoute(spots.map(function (s) { return s.coords; })); // 道路形状取得までの仮表示
-        buildMarkers();
-        fitAll();
-        refresh();
-        loadDirections();
+        setRoute(pilgrim.map((s) => s.coords)); // 道路形状取得までの仮表示
+        mapReady = true;
+        mode = '';
+        applyMode(pendingMode);
+        loadRoute();
     });
 </script>
 </body>

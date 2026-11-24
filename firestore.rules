@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function adminDoc() { return /databases/$(database)/documents/admins/$(request.auth.uid); }
+    function isAdmin() { return signedIn() && exists(adminDoc()); }
+    function role() { return get(adminDoc()).data.role; }
+    function isOwner() { return isAdmin() && role() == 'owner'; }
+    function isStaff() { return isAdmin() && role() in ['owner', 'staff']; }
+
+    function noticeOk(d) {
+      return !('notice' in d) || d.notice == null
+        || (d.notice.text is string && d.notice.text.size() <= 500);
+    }
+
+    // 利用者全員が購読する1ドキュメント
+    match /live/{docId} {
+      allow read: if docId == 'current';
+      allow create: if isOwner() && docId == 'current';
+      allow update: if docId == 'current' && noticeOk(request.resource.data) && (
+        isOwner()
+        || (isStaff() && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['spots', 'notice', 'updatedAt']))
+      );
+      allow delete: if false;
+    }
+
+    // 管理者名簿。role: 'owner' | 'staff'
+    match /admins/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isOwner());
+      allow write: if isOwner()
+        && request.resource.data.role in ['owner', 'staff']
+        && request.resource.data.name is string;
+      allow delete: if isOwner() && uid != request.auth.uid;
+    }
+
+    // 入力履歴（追記のみ）
+    match /logs/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

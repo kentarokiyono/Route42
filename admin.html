@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex">
+    <title>Route 42 管理</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --washi: #f3ede1; --paper: #faf6ee; --ink: #1a1a1a; --ink-sub: #5a5248; --shu: #b83a2b; --line: #e3d9c6; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--washi); color: var(--ink); font-family: 'Noto Sans JP', sans-serif; font-size: 14px; }
+        button, input, select, textarea { font-family: inherit; font-size: 15px; }
+        [hidden] { display: none !important; }
+        main { max-width: 720px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px 48px; display: flex; flex-direction: column; gap: 16px; }
+        h1 { margin: 0; font-family: 'Shippori Mincho', serif; font-size: 22px; letter-spacing: 0.08em; }
+        h2 { margin: 0 0 10px; font-size: 15px; }
+        .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .who { font-size: 12px; color: var(--ink-sub); display: flex; align-items: center; gap: 8px; }
+        .demo { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #fff3e8; border: 1px solid #e8c2a0; color: #8a4a12; }
+        .card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+        .err { color: var(--shu); font-size: 13px; min-height: 1em; }
+        label { display: block; font-size: 12px; color: var(--ink-sub); margin: 8px 0 4px; }
+        input[type=text], input[type=email], input[type=password], input[type=datetime-local], select, textarea { width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid #cfc3ad; border-radius: 8px; background: #fff; }
+        textarea { min-height: 80px; resize: vertical; }
+        .btn { min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1.5px solid var(--shu); background: #fff; color: var(--shu); font-weight: 700; }
+        .btn-primary { background: var(--shu); color: #fff; }
+        .btn-sm { min-height: 36px; padding: 0 10px; font-size: 13px; }
+        .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+        .seg button { flex: 1 1 0; min-width: 72px; min-height: 48px; border-radius: 8px; border: 1.5px solid #cfc3ad; background: #fff; color: var(--ink); font-weight: 700; }
+        .seg button[aria-pressed="true"] { color: #fff; border-color: transparent; }
+        .seg.mode button[aria-pressed="true"], .seg.state button[aria-pressed="true"] { background: var(--ink); }
+        .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+        .tabs button { min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid #cfc3ad; background: #fff; }
+        .tabs button[aria-selected="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+        .spot { padding: 12px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+        .spot-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+        .spot-name { font-weight: 700; font-size: 16px; }
+        .spot-meta { font-size: 12px; color: var(--ink-sub); text-align: right; }
+        .stale { color: var(--shu); }
+        .logs { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; font-size: 12px; }
+        .logs li { padding: 6px 0; border-top: 1px solid var(--line); display: flex; gap: 8px; }
+        .logs time { color: var(--ink-sub); white-space: nowrap; }
+        .admins { list-style: none; margin: 0; padding: 0; }
+        .admins li { padding: 8px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .uid { font-family: ui-monospace, monospace; font-size: 11px; color: var(--ink-sub); word-break: break-all; }
+        .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+<main>
+    <div class="top">
+        <h1>Route 42 管理</h1>
+        <div class="who" id="who" hidden>
+            <span class="demo" id="demoBadge" hidden>デモモード（この端末のみ）</span>
+            <span id="whoName"></span>
+            <button class="btn btn-sm" type="button" id="signOut">ログアウト</button>
+        </div>
+    </div>
+
+    <!-- ログイン -->
+    <section class="card" id="loginCard" hidden>
+        <h2>ログイン</h2>
+        <form id="demoLogin" hidden>
+            <label for="demoName">名前</label>
+            <input type="text" id="demoName" required maxlength="30" placeholder="例：串本町 観光課">
+            <label for="demoRole">権限</label>
+            <select id="demoRole">
+                <option value="owner">オーナー</option>
+                <option value="staff">職員</option>
+            </select>
+            <div class="btn-row"><button class="btn btn-primary" type="submit">ログイン</button></div>
+        </form>
+        <form id="emailLogin" hidden>
+            <label for="email">メールアドレス</label>
+            <input type="email" id="email" required autocomplete="username">
+            <label for="password">パスワード</label>
+            <input type="password" id="password" required autocomplete="current-password">
+            <div class="btn-row">
+                <button class="btn btn-primary" type="submit">ログイン</button>
+                <button class="btn" type="button" id="googleLogin">Google でログイン</button>
+            </div>
+        </form>
+        <p class="err" id="loginErr"></p>
+    </section>
+
+    <!-- 権限なし -->
+    <section class="card" id="noRoleCard" hidden>
+        <h2>権限がありません</h2>
+        <p>次のIDをオーナーに伝え、職員として登録してもらってください。</p>
+        <p class="uid" id="myUid"></p>
+    </section>
+
+    <div id="panel" hidden style="display:flex;flex-direction:column;gap:16px">
+        <section class="card" id="initCard" hidden>
+            <h2>初期設定</h2>
+            <p>配信用データがまだありません。</p>
+            <button class="btn btn-primary" type="button" id="initBtn">配信用データを作成</button>
+        </section>
+
+        <section class="card owner-only">
+            <h2>表示モード</h2>
+            <div class="seg mode" id="modeSeg">
+                <button type="button" data-mode="normal">通常（巡礼）</button>
+                <button type="button" data-mode="launch">打ち上げ</button>
+            </div>
+        </section>
+
+        <section class="card owner-only">
+            <h2>打ち上げ状況</h2>
+            <div class="seg state" id="stateSeg"></div>
+            <label for="launchTime">予定日時</label>
+            <input type="datetime-local" id="launchTime">
+            <label for="launchNote">補足（任意）</label>
+            <input type="text" id="launchNote" maxlength="80" placeholder="例：次回は12/3 11:00 予定">
+            <div class="btn-row"><button class="btn btn-primary" type="button" id="saveLaunch">打ち上げ状況を保存</button></div>
+        </section>
+
+        <section class="card">
+            <h2>お知らせ（利用者の画面上部に表示）</h2>
+            <textarea id="noticeText" maxlength="500" placeholder="例：臨時駐車場Aは満車です。Bをご利用ください。"></textarea>
+            <div class="btn-row">
+                <button class="btn btn-primary" type="button" id="saveNotice">お知らせを配信</button>
+                <button class="btn" type="button" id="clearNotice">お知らせを消す</button>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>混雑入力</h2>
+            <div class="tabs" role="tablist">
+                <button type="button" role="tab" id="tabLaunch" aria-selected="true">打ち上げ</button>
+                <button type="button" role="tab" id="tabPilgrim" aria-selected="false">巡礼</button>
+            </div>
+            <div id="spotList"></div>
+        </section>
+
+        <section class="card">
+            <h2>入力履歴</h2>
+            <ul class="logs" id="logs"></ul>
+        </section>
+
+        <section class="card owner-only" id="adminsCard" hidden>
+            <h2>職員管理</h2>
+            <ul class="admins" id="admins"></ul>
+            <form id="addAdmin">
+                <label for="newUid">ユーザーID（本人がログインすると表示される）</label>
+                <input type="text" id="newUid" required>
+                <label for="newName">表示名</label>
+                <input type="text" id="newName" required maxlength="30" placeholder="例：串本町 観光課 田中">
+                <label for="newRole">権限</label>
+                <select id="newRole">
+                    <option value="staff">職員</option>
+                    <option value="owner">オーナー</option>
+                </select>
+                <div class="btn-row"><button class="btn btn-primary" type="submit">登録</button></div>
+            </form>
+        </section>
+    </div>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+    import { createStore, LEVELS, LAUNCH_STATES, freshLevel, formatClock } from './js/store.js';
+
+    const $ = (id) => document.getElementById(id);
+    const SPOTS = await fetch('data/spots.json').then((r) => r.json());
+    const store = await createStore();
+
+    let user = null;
+    let live = null;
+    let spotTab = 'launch';
+    const unsubs = [];
+
+    function toast(msg) {
+        const t = $('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(() => t.classList.remove('show'), 2200);
+    }
+    async function run(fn, okMsg) {
+        try { await fn(); if (okMsg) toast(okMsg); }
+        catch (e) { console.error(e); toast('失敗：' + (e && e.message ? e.message : e)); }
+    }
+    const isOwner = () => user && user.role === 'owner';
+    const spotName = (id) => {
+        const s = SPOTS.launch.concat(SPOTS.pilgrim).find((x) => x.id === id);
+        return s ? s.name : id;
+    };
+
+    /* ---------- auth ---------- */
+    $('demoLogin').hidden = !store.isDemo;
+    $('emailLogin').hidden = store.isDemo;
+    $('demoBadge').hidden = !store.isDemo;
+
+    $('demoLogin').addEventListener('submit', (e) => {
+        e.preventDefault();
+        store.demoSignIn($('demoName').value.trim(), $('demoRole').value);
+    });
+    $('emailLogin').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        $('loginErr').textContent = '';
+        try { await store.signInEmail($('email').value.trim(), $('password').value); }
+        catch (err) { $('loginErr').textContent = 'ログインできませんでした。'; }
+    });
+    $('googleLogin').addEventListener('click', async () => {
+        $('loginErr').textContent = '';
+        try { await store.signInGoogle(); }
+        catch (err) { $('loginErr').textContent = 'ログインできませんでした。'; }
+    });
+    $('signOut').addEventListener('click', () => store.signOut());
+
+    store.onAuth((u) => {
+        user = u;
+        unsubs.splice(0).forEach((f) => f());
+        $('who').hidden = !u;
+        $('loginCard').hidden = !!u;
+        $('noRoleCard').hidden = !(u && !u.role);
+        $('panel').hidden = !(u && u.role);
+        if (!u) return;
+        $('whoName').textContent = u.name + '（' + (u.role === 'owner' ? 'オーナー' : u.role === 'staff' ? '職員' : '権限なし') + '）';
+        $('myUid').textContent = u.uid;
+        if (!u.role) return;
+        document.querySelectorAll('.owner-only').forEach((el) => { el.hidden = !isOwner(); });
+        $('adminsCard').hidden = !isOwner() || store.isDemo;
+        unsubs.push(store.subscribeLive((l) => { live = l; renderLive(); }, (e) => toast('受信エラー：' + e.message)));
+        unsubs.push(store.subscribeLogs(renderLogs));
+        if (isOwner() && store.subscribeAdmins) unsubs.push(store.subscribeAdmins(renderAdmins));
+    });
+
+    /* ---------- live ---------- */
+    function renderLive() {
+        if (!live) return;
+        $('initCard').hidden = store.isDemo || live.exists || !isOwner();
+
+        $('modeSeg').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === live.mode)));
+
+        const seg = $('stateSeg');
+        if (!seg.children.length) {
+            Object.keys(LAUNCH_STATES).forEach((k) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.dataset.state = k;
+                b.textContent = LAUNCH_STATES[k];
+                b.addEventListener('click', () => {
+                    seg.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+                });
+                seg.append(b);
+            });
+        }
+        // 編集中の入力は上書きしない
+        if (!seg.dataset.dirty) {
+            seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.state === live.launch.state)));
+            if (document.activeElement !== $('launchTime')) $('launchTime').value = live.launch.time;
+            if (document.activeElement !== $('launchNote')) $('launchNote').value = live.launch.note;
+        }
+        if (document.activeElement !== $('noticeText') && !$('noticeText').dataset.dirty) {
+            $('noticeText').value = live.notice ? live.notice.text : '';
+        }
+        renderSpots();
+    }
+
+    function renderSpots() {
+        const wrap = $('spotList');
+        wrap.textContent = '';
+        const spots = (spotTab === 'launch' ? SPOTS.launch : SPOTS.pilgrim).filter((s) => s.kind !== 'site');
+        const now = Date.now();
+        spots.forEach((s) => {
+            const e = live.spots[s.id];
+            const fresh = freshLevel(e, now);
+            const box = document.createElement('div');
+            box.className = 'spot';
+
+            const head = document.createElement('div');
+            head.className = 'spot-head';
+            const name = document.createElement('span');
+            name.className = 'spot-name';
+            name.textContent = s.name;
+            const meta = document.createElement('span');
+            meta.className = 'spot-meta';
+            if (e) {
+                meta.textContent = LEVELS[e.level].label + ' ・ ' + formatClock(e.at) + ' ' + e.by;
+                if (fresh === null) { meta.classList.add('stale'); meta.textContent += '（古い・利用者には非表示）'; }
+            } else {
+                meta.textContent = '未入力';
+            }
+            head.append(name, meta);
+
+            const seg = document.createElement('div');
+            seg.className = 'seg';
+            LEVELS.forEach((lv, i) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.textContent = lv.label;
+                const on = fresh === i;
+                b.setAttribute('aria-pressed', String(on));
+                if (on) b.style.background = lv.color;
+                b.addEventListener('click', () => run(() => store.setSpotLevel(s.id, i), s.name + '：' + lv.label));
+                seg.append(b);
+            });
+            box.append(head, seg);
+            wrap.append(box);
+        });
+    }
+
+    function renderLogs(logs) {
+        const ul = $('logs');
+        ul.textContent = '';
+        if (!logs.length) { const li = document.createElement('li'); li.textContent = '履歴なし'; ul.append(li); return; }
+        logs.slice(0, 50).forEach((g) => {
+            const li = document.createElement('li');
+            const t = document.createElement('time');
+            const d = new Date(g.at);
+            t.textContent = (d.getMonth() + 1) + '/' + d.getDate() + ' ' + formatClock(g.at);
+            const txt = document.createElement('span');
+            let what = '';
+            if (g.action === 'level') what = spotName(g.target) + ' → ' + (LEVELS[Number(g.value)] || {}).label;
+            else if (g.action === 'notice') what = g.value ? 'お知らせ：' + g.value : 'お知らせを消去';
+            else if (g.action === 'mode') what = 'モード → ' + (g.value === 'launch' ? '打ち上げ' : '通常');
+            else if (g.action === 'launch') what = '打ち上げ状況 → ' + (LAUNCH_STATES[g.target] || g.target) + ' ' + g.value;
+            txt.textContent = g.name + '：' + what;
+            li.append(t, txt);
+            ul.append(li);
+        });
+    }
+
+    function renderAdmins(list) {
+        const ul = $('admins');
+        ul.textContent = '';
+        list.forEach((a) => {
+            const li = document.createElement('li');
+            const info = document.createElement('div');
+            const n = document.createElement('div');
+            n.textContent = a.name + '（' + (a.role === 'owner' ? 'オーナー' : '職員') + '）';
+            const u = document.createElement('div');
+            u.className = 'uid';
+            u.textContent = a.uid;
+            info.append(n, u);
+            li.append(info);
+            if (a.uid !== user.uid) {
+                const del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'btn btn-sm';
+                del.textContent = '削除';
+                del.addEventListener('click', () => {
+                    if (confirm(a.name + ' を削除しますか？')) run(() => store.removeAdmin(a.uid), '削除しました');
+                });
+                li.append(del);
+            }
+            ul.append(li);
+        });
+    }
+
+    /* ---------- handlers ---------- */
+    $('initBtn').addEventListener('click', () => run(() => store.ensureLive(), '作成しました'));
+
+    $('modeSeg').addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b || !live || b.dataset.mode === live.mode) return;
+        const label = b.dataset.mode === 'launch' ? '打ち上げ' : '通常（巡礼）';
+        if (confirm('全利用者の表示を「' + label + '」モードに切り替えます。よろしいですか？')) {
+            run(() => store.setMode(b.dataset.mode), label + 'モードに切り替えました');
+        }
+    });
+
+    $('stateSeg').addEventListener('click', () => { $('stateSeg').dataset.dirty = '1'; });
+    ['launchTime', 'launchNote'].forEach((id) => $(id).addEventListener('input', () => { $('stateSeg').dataset.dirty = '1'; }));
+    $('saveLaunch').addEventListener('click', () => {
+        const pressed = $('stateSeg').querySelector('[aria-pressed="true"]');
+        const state = pressed ? pressed.dataset.state : 'scheduled';
+        if ((state === 'scrubbed' || state === 'delayed') && !confirm('「' + LAUNCH_STATES[state] + '」を全利用者に配信します。よろしいですか？')) return;
+        run(async () => {
+            await store.setLaunch({ state, time: $('launchTime').value, note: $('launchNote').value.trim() });
+            delete $('stateSeg').dataset.dirty;
+        }, '打ち上げ状況を保存しました');
+    });
+
+    $('noticeText').addEventListener('input', () => { $('noticeText').dataset.dirty = '1'; });
+    $('saveNotice').addEventListener('click', () => {
+        const text = $('noticeText').value.trim();
+        if (!text) { toast('お知らせが空です'); return; }
+        run(async () => { await store.setNotice(text); delete $('noticeText').dataset.dirty; }, 'お知らせを配信しました');
+    });
+    $('clearNotice').addEventListener('click', () => {
+        if (!confirm('お知らせを消しますか？')) return;
+        run(async () => { await store.setNotice(''); $('noticeText').value = ''; delete $('noticeText').dataset.dirty; }, 'お知らせを消しました');
+    });
+
+    function setSpotTab(t) {
+        spotTab = t;
+        $('tabLaunch').setAttribute('aria-selected', String(t === 'launch'));
+        $('tabPilgrim').setAttribute('aria-selected', String(t === 'pilgrim'));
+        if (live) renderSpots();
+    }
+    $('tabLaunch').addEventListener('click', () => setSpotTab('launch'));
+    $('tabPilgrim').addEventListener('click', () => setSpotTab('pilgrim'));
+
+    $('addAdmin').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const uid = $('newUid').value.trim(), name = $('newName').value.trim(), role = $('newRole').value;
+        if (role === 'owner' && !confirm(name + ' をオーナー（全権限）として登録しますか？')) return;
+        run(async () => { await store.setAdmin(uid, name, role); e.target.reset(); }, '登録しました');
+    });
+
+    // 鮮度表示の更新
+    setInterval(() => { if (live && user && user.role) renderSpots(); }, 60 * 1000);
+</script>
+</body>
+</html>
