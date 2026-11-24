@@ -38,7 +38,7 @@
         .progress-num { font-family: var(--mincho); font-size: 18px; font-weight: 700; line-height: 1.1; }
         .progress-num small { font-size: 12px; }
         .progress-label { font-size: 10px; letter-spacing: 0.1em; }
-        .banner { pointer-events: auto; display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 8px; background: var(--ink); color: #fff; font-size: 13px; }
+        .banner { pointer-events: auto; text-decoration: none; display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 8px; background: var(--ink); color: #fff; font-size: 13px; }
         .banner strong { font-size: 15px; letter-spacing: 0.05em; }
         .banner.alert { background: var(--shu); }
         .banner-sub { font-size: 12px; opacity: 0.9; }
@@ -125,10 +125,11 @@
                 <span class="progress-label">参拝済</span>
             </div>
         </div>
-        <div class="banner" id="launchBanner" aria-live="polite" hidden>
+        <a class="banner" id="launchBanner" href="status.html" aria-live="polite" hidden>
             <strong id="launchState"></strong>
             <span class="banner-sub" id="launchSub"></span>
-        </div>
+            <span class="banner-sub">見学場・駐車場の混雑情報を見る ›</span>
+        </a>
         <div class="notice" id="notice" aria-live="polite" hidden></div>
     </header>
 
@@ -202,15 +203,15 @@
     const SPOTS = await fetch('data/spots.json').then((r) => r.json());
     const pilgrim = SPOTS.pilgrim;
 
+    // 一般向け巡礼マップ。混雑情報は公開データ（public/current）を定期取得。
     let live = defaultLive();
-    let mode = 'normal';
     let legs = null;          // legs[i] = pilgrim[i] → pilgrim[i+1]
     let legsFailed = false;
     let current = -1;
-    let markers = [];         // { el, marker }
+    let markers = [];         // { el, badge, marker }
     let visited = loadVisited();
 
-    function list() { return mode === 'launch' ? SPOTS.launch : pilgrim; }
+    function list() { return pilgrim; }
 
     function loadVisited() {
         try {
@@ -301,11 +302,6 @@
             layout: { 'line-join': 'round', 'line-cap': 'round' },
             paint: { 'line-color': '#b83a2b', 'line-width': 3.5 } });
     }
-    function setRouteVisible(v) {
-        ['route42-casing', 'route42-line'].forEach((id) => {
-            if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', v ? 'visible' : 'none');
-        });
-    }
 
     // 事前計算済み data/route.json（tools/build-route.mjs で生成）→ なければ Directions API
     async function loadRoute() {
@@ -316,7 +312,6 @@
                 if (Array.isArray(j.legs) && j.legs.length === pilgrim.length - 1 && Array.isArray(j.coordinates)) {
                     setRoute(j.coordinates);
                     legs = j.legs;
-                    setRouteVisible(mode === 'normal');
                     render();
                     return;
                 }
@@ -336,7 +331,6 @@
             console.warn('route unavailable:', e);
             legsFailed = true;
         }
-        setRouteVisible(mode === 'normal');
         render();
     }
 
@@ -372,14 +366,11 @@
 
     /* ---------- render ---------- */
     function renderHeader() {
-        const launch = mode === 'launch';
-        $('brandSub').textContent = launch ? 'ロケット打ち上げ' : '南紀 巡礼の道';
-        $('brandTitle').textContent = launch ? '見学マップ' : '国道四十二号';
-        document.title = launch ? 'Route 42 - 打ち上げ見学マップ' : 'Route 42 - 南紀 巡礼の道';
-        $('progress').hidden = launch;
         $('visitedCount').textContent = kanji(visited.length);
         $('spotTotal').textContent = kanji(pilgrim.length);
 
+        // 打ち上げ当日は混雑情報ページへの案内を出す
+        const launch = live.mode === 'launch';
         const banner = $('launchBanner');
         banner.hidden = !launch;
         if (launch) {
@@ -514,21 +505,9 @@
     }
 
     function renderBook() {
-        const launch = mode === 'launch';
-        $('bookTitle').textContent = launch ? '混雑一覧' : '御朱印帳';
-        $('tabBookLabel').textContent = launch ? '混雑一覧' : '御朱印帳';
         const total = $('bookTotal');
         const listEl = $('bookList');
         listEl.textContent = '';
-
-        if (launch) {
-            total.textContent = '空いている順 ・ ' + (live.updatedAt ? '最終更新 ' + formatClock(live.updatedAt) : '情報未入力');
-            const items = SPOTS.launch.map((s, i) => ({ s, i, lv: levelOf(s) }))
-                .filter((x) => guidable(x.s))
-                .sort((a, b) => (a.lv === null ? 9 : a.lv) - (b.lv === null ? 9 : b.lv) || a.s.kind.localeCompare(b.s.kind));
-            items.forEach(({ s, i }) => listEl.append(bookItem(s, i, s.tag + (s.capacity ? ' ・ 収容 約' + s.capacity.toLocaleString() + s.unit : ''))));
-            return;
-        }
 
         if (legs) {
             let d = 0, t = 0;
@@ -594,15 +573,6 @@
         $('tabBook').setAttribute('aria-selected', String(name === 'book'));
         $('book').classList.toggle('open', name === 'book');
     }
-    function applyMode(next) {
-        if (next === mode && markers.length) return;
-        mode = next;
-        closeSheet();
-        buildMarkers();
-        setRouteVisible(mode === 'normal');
-        render();
-        fitAll(true);
-    }
 
     $('closeSheet').addEventListener('click', closeSheet);
     $('prevBtn').addEventListener('click', () => { if (current > 0) openSpot(current - 1); });
@@ -623,14 +593,11 @@
     /* ---------- boot ---------- */
     const store = await createStore();
     let mapReady = false;
-    let pendingMode = 'normal';
 
-    store.subscribeLive((l) => {
+    store.pollPublic((l) => {
         live = l;
-        pendingMode = l.mode;
-        if (!mapReady) return;
-        if (l.mode !== mode) applyMode(l.mode); else render();
-    }, (err) => console.warn('live subscribe failed:', err));
+        if (mapReady) render();
+    }, (err) => console.warn('public status fetch failed:', err));
 
     // 鮮度判定を定期的に更新
     setInterval(() => { if (mapReady) render(); }, 60 * 1000);
@@ -639,8 +606,9 @@
         applyWashiStyle();
         setRoute(pilgrim.map((s) => s.coords)); // 道路形状取得までの仮表示
         mapReady = true;
-        mode = '';
-        applyMode(pendingMode);
+        buildMarkers();
+        render();
+        fitAll(false);
         loadRoute();
     });
 </script>

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex">
+    <title>Route 42 職員マップ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+    <style>
+        :root { --washi: #f3ede1; --paper: #faf6ee; --ink: #1a1a1a; --ink-sub: #5a5248; --shu: #b83a2b; --line: #e3d9c6; --warn: #b35a16;
+            --nav-h: calc(64px + env(safe-area-inset-bottom)); }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; height: 100%; overflow: hidden; background: var(--washi); color: var(--ink); font-family: 'Noto Sans JP', sans-serif; }
+        button, textarea { font-family: inherit; }
+        button { cursor: pointer; }
+        [hidden] { display: none !important; }
+        #app { position: relative; width: 100%; height: 100vh; height: 100dvh; }
+        #map { position: absolute; top: 0; left: 0; right: 0; bottom: var(--nav-h); }
+
+        header { position: absolute; top: 0; left: 0; right: 0; z-index: 100; padding: calc(12px + env(safe-area-inset-top)) 12px 16px; background: linear-gradient(var(--washi) 70%, rgba(243,237,225,0)); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        header > * { pointer-events: auto; }
+        .head-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .title { font-size: 17px; font-weight: 700; }
+        .who { font-size: 11px; color: var(--ink-sub); }
+        .who a { color: var(--shu); }
+        .seg { display: flex; gap: 6px; }
+        .seg button { flex: 1; min-height: 40px; border-radius: 20px; border: 1px solid #cfc3ad; background: #fff; font-size: 13px; font-weight: 700; color: var(--ink); }
+        .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+        .banner { padding: 6px 10px; border-radius: 8px; background: var(--ink); color: #fff; font-size: 12px; }
+        .banner.alert { background: var(--shu); }
+        .notice { padding: 6px 10px; border-radius: 8px; background: var(--paper); border: 1px solid var(--shu); font-size: 12px; white-space: pre-line; }
+        .mapboxgl-ctrl-top-right { top: var(--ctrl-top, 140px); }
+
+        .marker { position: relative; display: flex; flex-direction: column; align-items: center; background: none; border: none; padding: 0; min-width: 44px; min-height: 44px; }
+        .marker-seal { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; background: var(--paper); color: var(--shu); border: 2px solid var(--shu); box-shadow: 0 1px 4px rgba(60,40,20,0.25); }
+        .marker.site .marker-seal { background: var(--ink); color: #fff; border-color: var(--ink); }
+        .marker.report .marker-seal { border-radius: 50%; background: var(--warn); border-color: #fff; color: #fff; }
+        .marker.current .marker-seal { transform: scale(1.2); box-shadow: 0 0 0 5px rgba(184,58,43,0.2); }
+        .marker-label { margin-top: 2px; font-size: 11px; font-weight: 500; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; white-space: nowrap; }
+        .cong { position: absolute; top: -6px; right: -2px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 1.5px solid #fff; }
+
+        .fab { position: absolute; right: 14px; bottom: calc(var(--nav-h) + 14px); z-index: 120; min-height: 48px; padding: 0 18px; border-radius: 24px; border: none; background: var(--warn); color: #fff; font-size: 15px; font-weight: 700; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+
+        .sheet { position: absolute; left: 0; right: 0; bottom: var(--nav-h); z-index: 150; max-height: calc(100dvh - var(--nav-h) - 100px); overflow-y: auto; background: var(--paper); border-radius: 18px 18px 0 0; box-shadow: 0 -4px 20px rgba(60,40,20,0.12); padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 10px; transform: translateY(110%); transition: transform .2s ease; }
+        .sheet.open { transform: translateY(0); }
+        .sheet-top { display: flex; justify-content: space-between; align-items: center; }
+        .sheet-title { margin: 0; font-size: 20px; }
+        .icon-btn { width: 44px; height: 44px; border: none; background: none; font-size: 24px; color: var(--ink-sub); }
+        .meta { font-size: 12px; color: var(--ink-sub); }
+        .levels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+        .levels button { min-height: 52px; border-radius: 10px; border: 2px solid #cfc3ad; background: #fff; font-size: 15px; font-weight: 700; color: var(--ink); }
+        .levels button[aria-pressed="true"] { color: #fff; border-color: transparent; }
+        .btn { min-height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 15px; font-weight: 700; text-decoration: none; border: 1.5px solid var(--shu); background: #fff; color: var(--shu); }
+        .btn-primary { background: var(--shu); color: #fff; }
+        textarea { width: 100%; min-height: 90px; padding: 8px 10px; border: 1px solid #cfc3ad; border-radius: 8px; font-size: 15px; resize: vertical; }
+        .radio { display: flex; flex-wrap: wrap; gap: 6px; }
+        .radio label { display: flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 10px; border: 1px solid #cfc3ad; border-radius: 20px; background: #fff; font-size: 13px; }
+        .err { color: var(--shu); font-size: 13px; min-height: 1em; margin: 0; }
+
+        .panel { position: absolute; top: 0; left: 0; right: 0; bottom: var(--nav-h); z-index: 160; background: var(--washi); overflow-y: auto; padding: calc(16px + env(safe-area-inset-top)) 16px 16px; display: none; }
+        .panel.open { display: block; }
+        .panel h2 { margin: 0 0 10px; font-size: 18px; }
+        .rlist { list-style: none; margin: 0; padding: 0; }
+        .rlist li { padding: 12px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+        .rlist .row { display: flex; gap: 8px; }
+        .rlist .row button { min-height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid #cfc3ad; background: #fff; font-size: 13px; }
+
+        .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: var(--nav-h); padding-bottom: env(safe-area-inset-bottom); z-index: 200; background: var(--paper); border-top: 1px solid var(--line); display: flex; justify-content: space-around; align-items: center; }
+        .tab { min-width: 96px; min-height: 48px; background: none; border: none; color: var(--ink-sub); font-size: 13px; }
+        .tab[aria-selected="true"] { color: var(--shu); font-weight: 700; }
+        .count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--warn); color: #fff; font-size: 11px; }
+
+        .gate { position: absolute; inset: 0; z-index: 300; background: var(--washi); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; }
+        .gate a { min-width: 200px; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div id="map" role="region" aria-label="地図"></div>
+
+    <header id="header">
+        <div class="head-row">
+            <div>
+                <div class="title">職員マップ</div>
+                <div class="who"><span id="whoName"></span> ・ <a href="admin.html">管理画面</a></div>
+            </div>
+        </div>
+        <div class="seg" role="group" aria-label="表示するスポット">
+            <button type="button" data-set="launch" aria-pressed="true">打ち上げ</button>
+            <button type="button" data-set="pilgrim" aria-pressed="false">巡礼</button>
+        </div>
+        <div class="banner" id="banner" hidden></div>
+        <div class="notice" id="notice" hidden></div>
+    </header>
+
+    <button class="fab" type="button" id="reportFab">＋ 現場報告</button>
+
+    <!-- スポット -->
+    <section class="sheet" id="spotSheet" aria-label="スポット" aria-hidden="true">
+        <div class="sheet-top">
+            <h2 class="sheet-title" id="spotName"></h2>
+            <button class="icon-btn" type="button" data-close aria-label="閉じる">×</button>
+        </div>
+        <div class="meta" id="spotMeta"></div>
+        <div class="meta" id="spotCur"></div>
+        <div class="levels" id="levels"></div>
+        <a class="btn" id="spotNav" target="_blank" rel="noopener">Google マップでナビ</a>
+    </section>
+
+    <!-- 報告詳細 -->
+    <section class="sheet" id="reportSheet" aria-label="現場報告" aria-hidden="true">
+        <div class="sheet-top">
+            <h2 class="sheet-title">現場報告</h2>
+            <button class="icon-btn" type="button" data-close aria-label="閉じる">×</button>
+        </div>
+        <div id="reportText" style="white-space:pre-line"></div>
+        <div class="meta" id="reportMeta"></div>
+        <button class="btn" type="button" id="resolveBtn">対応済みにする</button>
+    </section>
+
+    <!-- 報告作成 -->
+    <section class="sheet" id="newSheet" aria-label="現場報告を送る" aria-hidden="true">
+        <div class="sheet-top">
+            <h2 class="sheet-title">現場報告を送る</h2>
+            <button class="icon-btn" type="button" data-close aria-label="閉じる">×</button>
+        </div>
+        <label for="newText" class="meta">内容（300文字まで・職員のみ閲覧）</label>
+        <textarea id="newText" maxlength="300" placeholder="例：国道42号 田原交差点 渋滞 約1km"></textarea>
+        <div class="radio" role="radiogroup" aria-label="位置">
+            <label><input type="radio" name="loc" value="gps" checked> 現在地</label>
+            <label><input type="radio" name="loc" value="center"> 地図の中心</label>
+            <label><input type="radio" name="loc" value="none"> 位置なし</label>
+        </div>
+        <p class="err" id="newErr"></p>
+        <button class="btn btn-primary" type="button" id="sendReport">送信</button>
+    </section>
+
+    <section class="panel" id="reportPanel" aria-label="未対応の報告">
+        <h2>未対応の報告</h2>
+        <ul class="rlist" id="rlist"></ul>
+    </section>
+
+    <nav class="tabbar" role="tablist">
+        <button class="tab" type="button" role="tab" id="tabMap" aria-selected="true">地図</button>
+        <button class="tab" type="button" role="tab" id="tabReports" aria-selected="false">報告<span class="count" id="rcount" hidden></span></button>
+    </nav>
+
+    <div class="gate" id="gate">
+        <p id="gateMsg">読み込み中…</p>
+        <a class="btn btn-primary" href="admin.html" id="gateLink" hidden>管理画面でログイン</a>
+    </div>
+</div>
+
+<script type="module">
+    import { createStore, LEVELS, LAUNCH_STATES, freshLevel, formatClock, formatLaunchTime } from './js/store.js';
+
+    mapboxgl.accessToken = 'pk.eyJ1Ijoia2VudGFyb3dreW10b3VyaXNtIiwiYSI6ImNtbGVzZTZpOTFvNHkzZW9mY2R0aHQ2a3UifQ.E9eZXhlwt6vC0yNkoX3QcA';
+
+    const $ = (id) => document.getElementById(id);
+    const SPOTS = await fetch('data/spots.json').then((r) => r.json());
+    const store = await createStore();
+
+    let user = null, live = null, reports = [];
+    let set = 'launch';
+    let spotMarkers = [], reportMarkers = [];
+    let current = null; // { type: 'spot'|'report', id }
+    let mapReady = false;
+    const unsubs = [];
+
+    const spots = () => SPOTS[set];
+    const spotById = (id) => SPOTS.launch.concat(SPOTS.pilgrim).find((s) => s.id === id);
+    const sealText = (s, i) => s.kind === 'pilgrim' ? String(i + 1) : s.kind === 'parking' ? 'P' : s.kind === 'site' ? '射' : '見';
+    const gmaps = (c) => 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + c[1] + ',' + c[0];
+
+    /* ---------- map ---------- */
+    const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/light-v11', center: [135.8, 33.52], zoom: 10 });
+    const geo = new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true });
+    map.addControl(geo, 'top-right');
+    map.on('click', closeSheets);
+
+    function fit() {
+        const b = new mapboxgl.LngLatBounds();
+        spots().forEach((s) => b.extend(s.coords));
+        map.fitBounds(b, { padding: { top: $('header').offsetHeight + 10, bottom: 80, left: 40, right: 40 }, duration: 600, maxZoom: 13 });
+    }
+
+    function makeMarker(cls, seal, label, onClick) {
+        const el = document.createElement('button');
+        el.type = 'button';
+        el.className = 'marker ' + cls;
+        const s = document.createElement('span');
+        s.className = 'marker-seal';
+        s.textContent = seal;
+        const badge = document.createElement('span');
+        badge.className = 'cong';
+        badge.hidden = true;
+        const l = document.createElement('span');
+        l.className = 'marker-label';
+        l.textContent = label;
+        el.append(s, badge, l);
+        el.setAttribute('aria-label', label);
+        el.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+        return { el, badge };
+    }
+
+    function buildSpotMarkers() {
+        spotMarkers.forEach((m) => m.marker.remove());
+        spotMarkers = spots().map((s, i) => {
+            const m = makeMarker(s.kind === 'site' ? 'site' : '', sealText(s, i), s.name, () => openSpot(s.id));
+            m.spot = s;
+            m.marker = new mapboxgl.Marker({ element: m.el, anchor: 'top', offset: [0, -14] }).setLngLat(s.coords).addTo(map);
+            return m;
+        });
+    }
+
+    function buildReportMarkers() {
+        reportMarkers.forEach((m) => m.marker.remove());
+        reportMarkers = reports.filter((r) => r.coords).map((r) => {
+            const m = makeMarker('report', '!', formatClock(r.at), () => openReport(r.id));
+            m.report = r;
+            m.marker = new mapboxgl.Marker({ element: m.el, anchor: 'top', offset: [0, -14] }).setLngLat(r.coords).addTo(map);
+            return m;
+        });
+    }
+
+    /* ---------- render ---------- */
+    function render() {
+        if (!live) return;
+        const now = Date.now();
+        const st = live.launch.state;
+        $('banner').hidden = live.mode !== 'launch';
+        $('banner').textContent = '打ち上げモード ・ ' + LAUNCH_STATES[st] +
+            (formatLaunchTime(live.launch.time) ? ' ' + formatLaunchTime(live.launch.time) : '') +
+            (live.launch.note ? ' ・ ' + live.launch.note : '');
+        $('banner').classList.toggle('alert', st === 'delayed' || st === 'scrubbed');
+        $('notice').hidden = !live.notice;
+        $('notice').textContent = live.notice ? 'お知らせ（' + formatClock(live.notice.at) + ' ' + live.notice.by + '）：' + live.notice.text : '';
+        document.documentElement.style.setProperty('--ctrl-top', ($('header').offsetHeight - 8) + 'px');
+
+        spotMarkers.forEach((m) => {
+            const lv = m.spot.kind === 'site' ? null : freshLevel(live.spots[m.spot.id], now);
+            m.badge.hidden = lv === null;
+            if (lv !== null) { m.badge.textContent = LEVELS[lv].short; m.badge.style.background = LEVELS[lv].color; }
+            m.el.classList.toggle('current', !!current && current.type === 'spot' && current.id === m.spot.id);
+        });
+        if (current && current.type === 'spot') renderSpot();
+    }
+
+    function renderSpot() {
+        const s = spotById(current.id);
+        const e = live.spots[s.id];
+        const lv = freshLevel(e);
+        $('spotName').textContent = s.name;
+        $('spotMeta').textContent = s.tag + (s.capacity ? ' ・ 収容 約' + s.capacity.toLocaleString() + s.unit : '');
+        $('spotCur').textContent = e ? '現在：' + LEVELS[e.level].label + '（' + formatClock(e.at) + ' ' + e.by + '）' + (lv === null ? ' ※60分以上前・一般には非表示' : '') : '現在：未入力';
+        const box = $('levels');
+        box.textContent = '';
+        box.hidden = s.kind === 'site';
+        LEVELS.forEach((L, i) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = L.label;
+            b.setAttribute('aria-pressed', String(lv === i));
+            if (lv === i) b.style.background = L.color;
+            b.addEventListener('click', async () => {
+                try { await store.setSpotLevel(s.id, i); }
+                catch (err) { alert('入力できませんでした：' + err.message); }
+            });
+            box.append(b);
+        });
+        $('spotNav').href = gmaps(s.coords);
+    }
+
+    function renderReports() {
+        $('rcount').hidden = !reports.length;
+        $('rcount').textContent = reports.length;
+        const ul = $('rlist');
+        ul.textContent = '';
+        if (!reports.length) { const li = document.createElement('li'); li.textContent = '未対応の報告はありません'; ul.append(li); }
+        reports.forEach((r) => {
+            const li = document.createElement('li');
+            const t = document.createElement('div');
+            t.style.whiteSpace = 'pre-line';
+            t.textContent = r.text;
+            const m = document.createElement('div');
+            m.className = 'meta';
+            m.textContent = formatClock(r.at) + ' ' + r.name + (r.coords ? '' : ' ・ 位置なし');
+            const row = document.createElement('div');
+            row.className = 'row';
+            if (r.coords) {
+                const go = document.createElement('button');
+                go.type = 'button';
+                go.textContent = '地図で見る';
+                go.addEventListener('click', () => { showTab('map'); openReport(r.id); });
+                row.append(go);
+            }
+            const done = document.createElement('button');
+            done.type = 'button';
+            done.textContent = '対応済み';
+            done.addEventListener('click', () => resolve(r.id));
+            row.append(done);
+            li.append(t, m, row);
+            ul.append(li);
+        });
+        if (mapReady) buildReportMarkers();
+        if (current && current.type === 'report' && !reports.some((r) => r.id === current.id)) closeSheets();
+    }
+
+    /* ---------- sheets ---------- */
+    function openSheet(id) {
+        document.querySelectorAll('.sheet').forEach((s) => {
+            const on = s.id === id;
+            s.classList.toggle('open', on);
+            s.setAttribute('aria-hidden', String(!on));
+        });
+    }
+    function closeSheets() { current = null; openSheet(''); render(); }
+    function openSpot(id) {
+        current = { type: 'spot', id };
+        openSheet('spotSheet');
+        render();
+        map.flyTo({ center: spotById(id).coords, zoom: 13, padding: { top: $('header').offsetHeight, bottom: $('spotSheet').offsetHeight, left: 0, right: 0 } });
+    }
+    function openReport(id) {
+        const r = reports.find((x) => x.id === id);
+        if (!r) return;
+        current = { type: 'report', id };
+        $('reportText').textContent = r.text;
+        $('reportMeta').textContent = formatClock(r.at) + ' ' + r.name;
+        openSheet('reportSheet');
+        render();
+        if (r.coords) map.flyTo({ center: r.coords, zoom: 14 });
+    }
+    async function resolve(id) {
+        if (!confirm('この報告を対応済みにしますか？')) return;
+        try { await store.resolveReport(id); } catch (err) { alert('失敗：' + err.message); }
+    }
+    document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeSheets));
+    $('resolveBtn').addEventListener('click', () => { if (current && current.type === 'report') resolve(current.id); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheets(); });
+
+    $('reportFab').addEventListener('click', () => {
+        current = null;
+        $('newErr').textContent = '';
+        openSheet('newSheet');
+        render();
+    });
+
+    function currentPosition() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) { reject(new Error('位置情報が使えません')); return; }
+            navigator.geolocation.getCurrentPosition(
+                (p) => resolve([p.coords.longitude, p.coords.latitude]),
+                () => reject(new Error('現在地を取得できませんでした')),
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+        });
+    }
+    $('sendReport').addEventListener('click', async () => {
+        const btn = $('sendReport');
+        const text = $('newText').value.trim();
+        $('newErr').textContent = '';
+        if (!text) { $('newErr').textContent = '内容を入力してください'; return; }
+        btn.disabled = true;
+        try {
+            const loc = document.querySelector('input[name=loc]:checked').value;
+            let coords = null;
+            if (loc === 'gps') coords = await currentPosition();
+            else if (loc === 'center') { const c = map.getCenter(); coords = [c.lng, c.lat]; }
+            await store.addReport({ text, coords });
+            $('newText').value = '';
+            closeSheets();
+        } catch (err) {
+            $('newErr').textContent = err.message + (err.message.includes('現在地') ? '（「地図の中心」か「位置なし」で送れます）' : '');
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    /* ---------- tabs / set ---------- */
+    function showTab(name) {
+        $('tabMap').setAttribute('aria-selected', String(name === 'map'));
+        $('tabReports').setAttribute('aria-selected', String(name === 'reports'));
+        $('reportPanel').classList.toggle('open', name === 'reports');
+    }
+    $('tabMap').addEventListener('click', () => showTab('map'));
+    $('tabReports').addEventListener('click', () => { closeSheets(); showTab('reports'); });
+    document.querySelectorAll('[data-set]').forEach((b) => b.addEventListener('click', () => {
+        if (set === b.dataset.set) return;
+        set = b.dataset.set;
+        document.querySelectorAll('[data-set]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+        closeSheets();
+        buildSpotMarkers();
+        render();
+        fit();
+    }));
+
+    /* ---------- auth / boot ---------- */
+    store.onAuth((u) => {
+        user = u;
+        unsubs.splice(0).forEach((f) => f());
+        const ok = !!(u && u.role);
+        $('gate').hidden = ok;
+        $('gateLink').hidden = ok;
+        $('gateMsg').textContent = !u ? 'ログインが必要です' : (u.role ? '' : 'このアカウントには権限がありません');
+        if (!ok) return;
+        $('whoName').textContent = u.name;
+        unsubs.push(store.subscribeLive((l) => { live = l; render(); }, (e) => alert('受信エラー：' + e.message)));
+        unsubs.push(store.subscribeReports((list) => { reports = list; renderReports(); }));
+    });
+
+    setInterval(render, 60 * 1000);
+
+    map.on('load', () => {
+        mapReady = true;
+        buildSpotMarkers();
+        buildReportMarkers();
+        render();
+        fit();
+    });
+</script>
+</body>
+</html>

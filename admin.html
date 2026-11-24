@@ -96,6 +96,13 @@
     </section>
 
     <div id="panel" hidden style="display:flex;flex-direction:column;gap:16px">
+        <section class="card">
+            <div class="btn-row" style="margin-top:0">
+                <a class="btn btn-primary" href="staff.html" style="display:inline-flex;align-items:center;text-decoration:none">職員マップを開く</a>
+                <a class="btn" href="status.html" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;text-decoration:none">一般向け混雑ページ</a>
+            </div>
+        </section>
+
         <section class="card" id="initCard" hidden>
             <h2>初期設定</h2>
             <p>配信用データがまだありません。</p>
@@ -322,6 +329,8 @@
             else if (g.action === 'notice') what = g.value ? 'お知らせ：' + g.value : 'お知らせを消去';
             else if (g.action === 'mode') what = 'モード → ' + (g.value === 'launch' ? '打ち上げ' : '通常');
             else if (g.action === 'launch') what = '打ち上げ状況 → ' + (LAUNCH_STATES[g.target] || g.target) + ' ' + g.value;
+            else if (g.action === 'report') what = '現場報告：' + g.value;
+            else if (g.action === 'resolve') what = '報告を対応済みに' + (g.value ? '：' + g.value : '');
             txt.textContent = g.name + '：' + what;
             li.append(t, txt);
             ul.append(li);

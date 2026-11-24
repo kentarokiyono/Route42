@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Route 42 混雑情報</title>
+    <meta name="description" content="串本町・那智勝浦町周辺の見学場・駐車場の混雑情報">
+    <style>
+        /* 回線が混んでも開けるよう、外部フォント・地図・SDK は読み込まない */
+        :root { --washi: #f3ede1; --paper: #faf6ee; --ink: #1a1a1a; --ink-sub: #5a5248; --shu: #b83a2b; --line: #e3d9c6; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--washi); color: var(--ink); font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 15px; line-height: 1.6; }
+        [hidden] { display: none !important; }
+        main { max-width: 640px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px; }
+        h1 { margin: 0; font-size: 20px; letter-spacing: 0.05em; }
+        .sub { margin: 0; font-size: 12px; color: var(--ink-sub); }
+        .launch { padding: 14px 16px; border-radius: 12px; background: var(--ink); color: #fff; }
+        .launch.alert { background: var(--shu); }
+        .launch strong { display: block; font-size: 22px; letter-spacing: 0.05em; }
+        .launch span { font-size: 14px; opacity: 0.92; }
+        .notice { padding: 12px 14px; border-radius: 12px; background: var(--paper); border: 1.5px solid var(--shu); white-space: pre-line; }
+        .notice small { display: block; color: var(--ink-sub); font-size: 12px; }
+        h2 { margin: 6px 0 0; font-size: 15px; }
+        ul { list-style: none; margin: 0; padding: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; }
+        li { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--line); }
+        li:first-child { border-top: none; }
+        .grow { flex: 1; min-width: 0; }
+        .name { font-weight: 700; }
+        .meta { font-size: 12px; color: var(--ink-sub); }
+        .pill { flex-shrink: 0; padding: 3px 10px; border-radius: 12px; color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; }
+        .pill.none { background: #e3d9c6; color: var(--ink-sub); }
+        .nav { flex-shrink: 0; min-width: 56px; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1.5px solid var(--shu); color: var(--shu); font-size: 13px; font-weight: 700; text-decoration: none; }
+        .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--ink-sub); }
+        .foot button { min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid #cfc3ad; background: #fff; font: inherit; color: var(--ink); }
+        .err { color: var(--shu); font-size: 13px; }
+        .legend { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; }
+        a.map-link { color: var(--shu); font-size: 13px; }
+    </style>
+</head>
+<body>
+<main>
+    <div>
+        <h1 id="title">混雑情報</h1>
+        <p class="sub">串本町・那智勝浦町 職員が現地の状況を入力しています</p>
+    </div>
+
+    <div class="launch" id="launch" aria-live="polite" hidden>
+        <strong id="launchState"></strong>
+        <span id="launchSub"></span>
+    </div>
+
+    <div class="notice" id="notice" aria-live="polite" hidden></div>
+
+    <p class="err" id="err" role="alert" hidden>通信できません。最後に取得した情報を表示しています。</p>
+
+    <div id="sections"></div>
+
+    <div class="legend" id="legend" aria-label="混雑度の凡例"></div>
+
+    <div class="foot">
+        <span id="updated">読み込み中…</span>
+        <button type="button" id="reload">更新</button>
+    </div>
+    <a class="map-link" href="Index.html">巡礼マップ（地図）を開く ›</a>
+</main>
+
+<script type="module">
+    import { createStore, LEVELS, LAUNCH_STATES, PUBLIC_POLL_MS, freshLevel, formatClock, formatLaunchTime } from './js/store.js';
+
+    const $ = (id) => document.getElementById(id);
+    const SPOTS = await fetch('data/spots.json').then((r) => r.json());
+    const store = await createStore();
+    let live = null;
+    let stop = null;
+
+    LEVELS.forEach((lv) => {
+        const s = document.createElement('span');
+        s.className = 'pill';
+        s.style.background = lv.color;
+        s.textContent = lv.label;
+        $('legend').append(s);
+    });
+
+    function pill(level) {
+        const s = document.createElement('span');
+        s.className = 'pill' + (level === null ? ' none' : '');
+        if (level === null) s.textContent = '情報なし';
+        else { s.textContent = LEVELS[level].label; s.style.background = LEVELS[level].color; }
+        return s;
+    }
+
+    function section(title, spots) {
+        const h = document.createElement('h2');
+        h.textContent = title;
+        const ul = document.createElement('ul');
+        const now = Date.now();
+        spots.map((s) => ({ s, lv: freshLevel(live.spots[s.id], now) }))
+            .sort((a, b) => (a.lv === null ? 9 : a.lv) - (b.lv === null ? 9 : b.lv))
+            .forEach(({ s, lv }) => {
+                const li = document.createElement('li');
+                const g = document.createElement('div');
+                g.className = 'grow';
+                const n = document.createElement('div');
+                n.className = 'name';
+                n.textContent = s.name;
+                const m = document.createElement('div');
+                m.className = 'meta';
+                const e = live.spots[s.id];
+                m.textContent = [s.capacity ? '収容 約' + s.capacity.toLocaleString() + s.unit : s.tag,
+                    lv !== null ? formatClock(e.at) + ' 時点' : ''].filter(Boolean).join(' ・ ');
+                g.append(n, m);
+                const a = document.createElement('a');
+                a.className = 'nav';
+                a.href = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + s.coords[1] + ',' + s.coords[0];
+                a.target = '_blank';
+                a.rel = 'noopener';
+                a.textContent = 'ナビ';
+                a.setAttribute('aria-label', s.name + ' へのナビ');
+                li.append(g, pill(lv), a);
+                ul.append(li);
+            });
+        return [h, ul];
+    }
+
+    function render() {
+        if (!live) return;
+        const launch = live.mode === 'launch';
+        $('title').textContent = launch ? 'ロケット打ち上げ 混雑情報' : '巡礼スポット 混雑情報';
+        document.title = 'Route 42 ' + $('title').textContent;
+
+        $('launch').hidden = !launch;
+        if (launch) {
+            const st = live.launch.state;
+            $('launchState').textContent = LAUNCH_STATES[st];
+            const t = formatLaunchTime(live.launch.time);
+            $('launchSub').textContent = [t ? '予定 ' + t : '', live.launch.note].filter(Boolean).join(' ・ ');
+            $('launch').classList.toggle('alert', st === 'delayed' || st === 'scrubbed');
+        }
+
+        $('notice').hidden = !live.notice;
+        $('notice').textContent = '';
+        if (live.notice) {
+            $('notice').append(live.notice.text);
+            const sm = document.createElement('small');
+            sm.textContent = formatClock(live.notice.at) + ' 更新';
+            $('notice').append(sm);
+        }
+
+        const box = $('sections');
+        box.textContent = '';
+        if (launch) {
+            box.append(...section('見学場（空いている順）', SPOTS.launch.filter((s) => s.kind === 'viewing')));
+            box.append(...section('臨時駐車場（空いている順）', SPOTS.launch.filter((s) => s.kind === 'parking')));
+        } else {
+            box.append(...section('札所（空いている順）', SPOTS.pilgrim));
+        }
+        $('updated').textContent = (live.updatedAt ? '最終更新 ' + formatClock(live.updatedAt) : '情報未入力') +
+            ' ・ ' + Math.round(PUBLIC_POLL_MS / 1000) + '秒ごとに自動更新';
+    }
+
+    function start() {
+        if (stop) stop();
+        stop = store.pollPublic(
+            (l) => { live = l; $('err').hidden = true; render(); },
+            () => { $('err').hidden = false; if (!live) $('updated').textContent = '取得できませんでした'; }
+        );
+    }
+    $('reload').addEventListener('click', start);
+    start();
+</script>
+</body>
+</html>
