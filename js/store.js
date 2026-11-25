@@ -9,18 +9,19 @@
 //   admins/{uid}   { name, role: 'owner' | 'staff' }
 import { FIREBASE_CONFIG } from './config.js';
 
+// iOS システムカラー（白文字・白背景でも読める濃さの版）
 export const LEVELS = [
-    { label: '空き', short: '空', color: '#2a7f6f' },
-    { label: '普通', short: '普', color: '#8a6d1f' },
-    { label: 'やや混雑', short: '混', color: '#b35a16' },
-    { label: '混雑・満員', short: '満', color: '#8f2a1e' }
+    { label: '空き', short: '空', color: '#248a3d' },
+    { label: '普通', short: '普', color: '#0071a4' },
+    { label: 'やや混雑', short: '混', color: '#c93400' },
+    { label: '混雑・満員', short: '満', color: '#d70015' }
 ];
 
 export const ROAD_LEVELS = [
-    { label: '順調', short: '順', color: '#2a7f6f' },
-    { label: '混雑', short: '混', color: '#b35a16' },
-    { label: '渋滞', short: '渋', color: '#8f2a1e' },
-    { label: '通行止め', short: '止', color: '#1a1a1a' }
+    { label: '順調', short: '順', color: '#248a3d' },
+    { label: '混雑', short: '混', color: '#c93400' },
+    { label: '渋滞', short: '渋', color: '#d70015' },
+    { label: '通行止め', short: '止', color: '#1c1c1e' }
 ];
 
 // 道路の入力キー: <区間ID>__<方向番号>

@@ -6,46 +6,63 @@
     <meta name="robots" content="noindex">
     <title>Route 42 管理</title>
     <style>
-        :root { --washi: #f3ede1; --paper: #faf6ee; --ink: #1a1a1a; --ink-sub: #5a5248; --shu: #b83a2b; --line: #e3d9c6; }
+        :root {
+            --bg: #f2f2f7; --card: #ffffff; --label: #1c1c1e; --label-2: #6c6c70;
+            --accent: #0071e3; --accent-fill: #0071e3; --accent-tint: rgba(0, 113, 227, 0.12);
+            --sep: rgba(60, 60, 67, 0.18); --fill: rgba(120, 120, 128, 0.12);
+            --banner: #1c1c1e; --danger: #d70015;
+            --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+            color-scheme: light;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000; --card: #1c1c1e; --label: #ffffff; --label-2: #aeaeb2;
+                --accent: #0a84ff; --accent-tint: rgba(10, 132, 255, 0.18);
+                --sep: rgba(84, 84, 88, 0.65); --fill: rgba(118, 118, 128, 0.24); --banner: #2c2c2e;
+                color-scheme: dark;
+            }
+        }
         * { box-sizing: border-box; }
-        body { margin: 0; background: var(--washi); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif; font-size: 14px; }
-        button, input, select, textarea { font-family: inherit; font-size: 15px; }
+        body { margin: 0; background: var(--bg); color: var(--label); font-family: var(--font); font-size: 15px; -webkit-font-smoothing: antialiased; }
+        button, input, select, textarea { font-family: inherit; font-size: 17px; color: inherit; }
         [hidden] { display: none !important; }
-        main { max-width: 720px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px 48px; display: flex; flex-direction: column; gap: 16px; }
-        h1 { margin: 0; font-family: "Hiragino Mincho ProN", "Hiragino Mincho Pro", serif; font-size: 22px; letter-spacing: 0.08em; }
-        h2 { margin: 0 0 10px; font-size: 15px; }
+        main { max-width: 720px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px 48px; display: flex; flex-direction: column; gap: 20px; }
+        h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.01em; }
+        h2 { margin: 0 0 10px; font-size: 13px; font-weight: 400; color: var(--label-2); }
         .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .who { font-size: 12px; color: var(--ink-sub); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+        .who { font-size: 13px; color: var(--label-2); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
         .btn, .demo { white-space: nowrap; }
-        .demo { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #fff3e8; border: 1px solid #e8c2a0; color: #8a4a12; }
-        .card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
-        .err { color: var(--shu); font-size: 13px; min-height: 1em; }
-        label { display: block; font-size: 12px; color: var(--ink-sub); margin: 8px 0 4px; }
-        input[type=text], input[type=email], input[type=password], input[type=datetime-local], select, textarea { width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid #cfc3ad; border-radius: 8px; background: #fff; }
-        textarea { min-height: 80px; resize: vertical; }
-        .btn { min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1.5px solid var(--shu); background: #fff; color: var(--shu); font-weight: 700; }
-        .btn-primary { background: var(--shu); color: #fff; }
-        .btn-sm { min-height: 36px; padding: 0 10px; font-size: 13px; }
-        .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .demo { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: rgba(255, 149, 0, 0.16); color: #c93400; }
+        @media (prefers-color-scheme: dark) { .demo { color: #ff9f0a; } }
+        .card { background: var(--card); border-radius: 12px; padding: 16px; }
+        .err { color: var(--danger); font-size: 13px; min-height: 1em; }
+        label { display: block; font-size: 13px; color: var(--label-2); margin: 10px 0 4px; }
+        input[type=text], input[type=email], input[type=password], input[type=datetime-local], select, textarea { width: 100%; min-height: 44px; padding: 8px 12px; border: none; border-radius: 10px; background: var(--fill); }
+        textarea { min-height: 88px; resize: vertical; }
+        .btn { min-height: 44px; padding: 0 18px; border-radius: 12px; border: none; background: var(--accent-tint); color: var(--accent); font-weight: 600; font-size: 17px; }
+        .btn-primary { background: var(--accent-fill); color: #fff; }
+        .btn-sm { min-height: 32px; padding: 0 12px; font-size: 13px; border-radius: 16px; }
+        .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
         .seg { display: flex; gap: 6px; flex-wrap: wrap; }
-        .seg button { flex: 1 1 0; min-width: 72px; min-height: 48px; border-radius: 8px; border: 1.5px solid #cfc3ad; background: #fff; color: var(--ink); font-weight: 700; }
-        .seg button[aria-pressed="true"] { color: #fff; border-color: transparent; }
-        .seg.mode button[aria-pressed="true"], .seg.state button[aria-pressed="true"] { background: var(--ink); }
-        .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
-        .tabs button { min-height: 40px; padding: 0 14px; border-radius: 20px; border: 1px solid #cfc3ad; background: #fff; }
-        .tabs button[aria-selected="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
-        .spot { padding: 12px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+        .seg button { flex: 1 1 0; min-width: 72px; min-height: 48px; border-radius: 10px; border: none; background: var(--fill); font-weight: 600; font-size: 15px; }
+        .seg button[aria-pressed="true"] { color: #fff; }
+        .seg.mode button[aria-pressed="true"], .seg.state button[aria-pressed="true"] { background: var(--accent-fill); }
+        .tabs { display: flex; padding: 2px; border-radius: 9px; background: var(--fill); margin-bottom: 8px; }
+        .tabs button { flex: 1; min-height: 32px; border-radius: 7px; border: none; background: none; font-size: 13px; font-weight: 500; }
+        .tabs button[aria-selected="true"] { background: var(--card); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        .spot { padding: 12px 0; border-top: 0.5px solid var(--sep); display: flex; flex-direction: column; gap: 8px; }
         .spot-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-        .spot-name { font-weight: 700; font-size: 16px; }
-        .spot-meta { font-size: 12px; color: var(--ink-sub); text-align: right; }
-        .stale { color: var(--shu); }
-        .logs { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; font-size: 12px; }
-        .logs li { padding: 6px 0; border-top: 1px solid var(--line); display: flex; gap: 8px; }
-        .logs time { color: var(--ink-sub); white-space: nowrap; }
+        .spot-name { font-weight: 600; font-size: 17px; }
+        .spot-meta { font-size: 13px; color: var(--label-2); text-align: right; }
+        .stale { color: var(--danger); }
+        .logs { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; font-size: 13px; }
+        .logs li { padding: 8px 0; border-top: 0.5px solid var(--sep); display: flex; gap: 8px; }
+        .logs li:first-child { border-top: none; }
+        .logs time { color: var(--label-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
         .admins { list-style: none; margin: 0; padding: 0; }
-        .admins li { padding: 8px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-        .uid { font-family: ui-monospace, monospace; font-size: 11px; color: var(--ink-sub); word-break: break-all; }
-        .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+        .admins li { padding: 10px 0; border-top: 0.5px solid var(--sep); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .uid { font-family: ui-monospace, "SF Mono", monospace; font-size: 12px; color: var(--label-2); word-break: break-all; }
+        .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: rgba(29,29,31,0.92); color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 15px; opacity: 0; transition: opacity .2s; pointer-events: none; }
         .toast.show { opacity: 1; }
     </style>
     <script src="js/sw-register.js"></script>
@@ -105,7 +122,7 @@
 
         <section class="card" id="demoCard" hidden>
             <h2>デモ用データ</h2>
-            <p style="margin:0;font-size:13px;color:var(--ink-sub)">説明用に、打ち上げ当日を想定したサンプル（混雑・道路・報告・お知らせ）を入れます。この端末のブラウザ内だけで動作します。</p>
+            <p style="margin:0;font-size:13px;color:var(--label-2)">説明用に、打ち上げ当日を想定したサンプル（混雑・道路・報告・お知らせ）を入れます。この端末のブラウザ内だけで動作します。</p>
             <div class="btn-row">
                 <button class="btn btn-primary" type="button" id="demoSeed">サンプルデータを入れる</button>
                 <button class="btn" type="button" id="demoReset">すべて消す</button>

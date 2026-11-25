@@ -8,78 +8,97 @@
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
     <style>
-        :root { --washi: #f3ede1; --paper: #faf6ee; --ink: #1a1a1a; --ink-sub: #5a5248; --shu: #b83a2b; --line: #e3d9c6; --warn: #b35a16;
-            --nav-h: calc(64px + env(safe-area-inset-bottom)); }
+        :root {
+            --bg: #f2f2f7; --card: #ffffff; --label: #1c1c1e; --label-2: #6c6c70;
+            --accent: #0071e3; --accent-fill: #0071e3; --accent-tint: rgba(0, 113, 227, 0.12);
+            --sep: rgba(60, 60, 67, 0.18); --fill: rgba(120, 120, 128, 0.12); --chrome: rgba(249, 249, 249, 0.94);
+            --banner: #1c1c1e; --danger: #d70015; --warn: #c93400;
+            --map-label: #1c1c1e; --map-halo: #ffffff;
+            --nav-h: calc(56px + env(safe-area-inset-bottom));
+            --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+            color-scheme: light;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000; --card: #1c1c1e; --label: #ffffff; --label-2: #aeaeb2;
+                --accent: #0a84ff; --accent-tint: rgba(10, 132, 255, 0.18);
+                --sep: rgba(84, 84, 88, 0.65); --fill: rgba(118, 118, 128, 0.24); --chrome: rgba(22, 22, 24, 0.94);
+                --banner: #2c2c2e; --map-label: #ffffff; --map-halo: #000000;
+                color-scheme: dark;
+            }
+        }
         * { box-sizing: border-box; }
-        html, body { margin: 0; height: 100%; overflow: hidden; background: var(--washi); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif; }
-        button, textarea { font-family: inherit; }
+        html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--label); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+        button, textarea { font-family: inherit; color: inherit; }
         button { cursor: pointer; }
         [hidden] { display: none !important; }
         #app { position: relative; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; }
         #map { position: absolute; top: 0; left: 0; right: 0; bottom: var(--nav-h); }
 
-        header { position: absolute; top: 0; left: 0; right: 0; z-index: 100; padding: calc(12px + env(safe-area-inset-top)) 12px 16px; background: linear-gradient(var(--washi) 70%, rgba(243,237,225,0)); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        header { position: absolute; top: 0; left: 0; right: 0; z-index: 100; padding: calc(12px + env(safe-area-inset-top)) 16px 16px; background: linear-gradient(var(--bg) 70%, transparent); display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
         header > * { pointer-events: auto; }
         .head-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-        .title { font-size: 17px; font-weight: 700; }
-        .who { font-size: 11px; color: var(--ink-sub); }
-        .who a { color: var(--shu); }
-        .seg { display: flex; gap: 6px; }
-        .seg button { flex: 1; min-height: 40px; border-radius: 20px; border: 1px solid #cfc3ad; background: #fff; font-size: 13px; font-weight: 700; color: var(--ink); }
-        .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
-        .banner { padding: 6px 10px; border-radius: 8px; background: var(--ink); color: #fff; font-size: 12px; }
-        .banner.alert { background: var(--shu); }
-        .notice { padding: 6px 10px; border-radius: 8px; background: var(--paper); border: 1px solid var(--shu); font-size: 12px; white-space: pre-line; }
+        .title { font-size: 28px; font-weight: 700; letter-spacing: -0.01em; }
+        .who { font-size: 13px; color: var(--label-2); }
+        .who a { color: var(--accent); text-decoration: none; }
+        .seg { display: flex; padding: 2px; border-radius: 9px; background: var(--fill); }
+        .seg button { flex: 1; min-height: 32px; border-radius: 7px; border: none; background: none; font-size: 13px; font-weight: 500; }
+        .seg button[aria-pressed="true"] { background: var(--card); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        .banner { padding: 8px 12px; border-radius: 10px; background: var(--banner); color: #fff; font-size: 13px; font-weight: 500; }
+        .banner.alert { background: var(--danger); }
+        .notice { padding: 8px 12px; border-radius: 10px; background: var(--card); box-shadow: 0 1px 4px rgba(0,0,0,0.08); font-size: 13px; white-space: pre-line; }
         .mapboxgl-ctrl-top-right { top: var(--ctrl-top, 140px); }
 
         .marker { position: relative; display: flex; flex-direction: column; align-items: center; background: none; border: none; padding: 0; min-width: 44px; min-height: 44px; }
-        .marker-seal { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; background: var(--paper); color: var(--shu); border: 2px solid var(--shu); box-shadow: 0 1px 4px rgba(60,40,20,0.25); }
-        .marker.site .marker-seal { background: var(--ink); color: #fff; border-color: var(--ink); }
-        .marker.report .marker-seal { border-radius: 50%; background: var(--warn); border-color: #fff; color: #fff; }
-        .marker.road .marker-seal { width: 26px; height: 26px; border-radius: 50%; background: #fff; border-color: var(--ink); color: var(--ink); font-size: 12px; }
-        .marker.current .marker-seal { transform: scale(1.2); box-shadow: 0 0 0 5px rgba(184,58,43,0.2); }
-        .marker-label { margin-top: 2px; font-size: 11px; font-weight: 500; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; white-space: nowrap; }
+        .marker-seal { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; background: #ffffff; color: #0071e3; border: 2px solid #0071e3; box-shadow: 0 1px 4px rgba(0,0,0,0.25); }
+        .marker.site .marker-seal { background: #1c1c1e; color: #fff; border-color: #1c1c1e; }
+        .marker.report .marker-seal { border-radius: 50%; background: #c93400; border-color: #fff; color: #fff; }
+        .marker.road .marker-seal { width: 26px; height: 26px; border-radius: 50%; border-color: #1c1c1e; color: #1c1c1e; font-size: 12px; }
+        .marker.current .marker-seal { transform: scale(1.2); box-shadow: 0 0 0 5px rgba(0,113,227,0.25); }
+        .marker-label { margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--map-label); text-shadow: 0 0 3px var(--map-halo), 0 0 3px var(--map-halo), 0 0 3px var(--map-halo); white-space: nowrap; }
         .cong { position: absolute; top: -6px; right: -2px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 1.5px solid #fff; }
 
-        .fab { position: absolute; right: 14px; bottom: calc(var(--nav-h) + 14px); z-index: 120; min-height: 48px; padding: 0 18px; border-radius: 24px; border: none; background: var(--warn); color: #fff; font-size: 15px; font-weight: 700; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .fab { position: absolute; right: 16px; bottom: calc(var(--nav-h) + 16px); z-index: 120; min-height: 50px; padding: 0 20px; border-radius: 25px; border: none; background: var(--accent-fill); color: #fff; font-size: 17px; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,0.2); }
 
-        .sheet { position: absolute; left: 0; right: 0; bottom: var(--nav-h); z-index: 150; max-height: calc(100dvh - var(--nav-h) - 100px); overflow-y: auto; background: var(--paper); border-radius: 18px 18px 0 0; box-shadow: 0 -4px 20px rgba(60,40,20,0.12); padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 10px; transform: translateY(110%); transition: transform .2s ease; }
+        .sheet { position: absolute; left: 0; right: 0; bottom: var(--nav-h); z-index: 150; max-height: calc(100dvh - var(--nav-h) - 100px); overflow-y: auto; background: var(--card); border-radius: 14px 14px 0 0; box-shadow: 0 -2px 16px rgba(0,0,0,0.12); padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 10px; transform: translateY(110%); transition: transform .2s ease; }
         .sheet:not(.open) { visibility: hidden; transition: transform .2s ease, visibility 0s .2s; }
         .sheet.open { transform: translateY(0); }
         .sheet-top { display: flex; justify-content: space-between; align-items: center; }
-        .sheet-title { margin: 0; font-size: 20px; }
-        .icon-btn { width: 44px; height: 44px; border: none; background: none; font-size: 24px; color: var(--ink-sub); }
-        .meta { font-size: 12px; color: var(--ink-sub); }
+        .sheet-title { margin: 0; font-size: 20px; font-weight: 700; }
+        .icon-btn { width: 44px; height: 44px; border: none; background: none; display: flex; align-items: center; justify-content: center; font-size: 0; }
+        .icon-btn::before { content: "×"; width: 30px; height: 30px; border-radius: 50%; background: var(--fill); color: var(--label-2); font-size: 20px; line-height: 30px; text-align: center; }
+        .meta { font-size: 13px; color: var(--label-2); }
         .levels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-        .levels button { min-height: 52px; border-radius: 10px; border: 2px solid #cfc3ad; background: #fff; font-size: 15px; font-weight: 700; color: var(--ink); }
-        .levels button[aria-pressed="true"] { color: #fff; border-color: transparent; }
-        .dir { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+        .levels button { min-height: 50px; border-radius: 12px; border: none; background: var(--fill); font-size: 17px; font-weight: 600; }
+        .levels button[aria-pressed="true"] { color: #fff; }
+        .dir { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; border-top: 0.5px solid var(--sep); }
         .dir-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-        .dir-name { font-weight: 700; }
+        .dir-name { font-weight: 600; font-size: 15px; }
         .levels.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-        .levels.four button { min-height: 48px; font-size: 14px; }
-        .btn { min-height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 15px; font-weight: 700; text-decoration: none; border: 1.5px solid var(--shu); background: #fff; color: var(--shu); }
-        .btn-primary { background: var(--shu); color: #fff; }
-        textarea { width: 100%; min-height: 90px; padding: 8px 10px; border: 1px solid #cfc3ad; border-radius: 8px; font-size: 15px; resize: vertical; }
+        .levels.four button { min-height: 46px; font-size: 14px; }
+        .btn { min-height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 17px; font-weight: 600; text-decoration: none; border: none; background: var(--accent-tint); color: var(--accent); }
+        .btn-primary { background: var(--accent-fill); color: #fff; }
+        textarea { width: 100%; min-height: 96px; padding: 10px 12px; border: none; border-radius: 10px; background: var(--fill); font-size: 17px; resize: vertical; }
         .radio { display: flex; flex-wrap: wrap; gap: 6px; }
-        .radio label { display: flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 10px; border: 1px solid #cfc3ad; border-radius: 20px; background: #fff; font-size: 13px; }
-        .err { color: var(--shu); font-size: 13px; min-height: 1em; margin: 0; }
+        .radio label { display: flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border-radius: 20px; background: var(--fill); font-size: 15px; }
+        .err { color: var(--danger); font-size: 13px; min-height: 1em; margin: 0; }
 
-        .panel { position: absolute; top: 0; left: 0; right: 0; bottom: var(--nav-h); z-index: 160; background: var(--washi); overflow-y: auto; padding: calc(16px + env(safe-area-inset-top)) 16px 16px; display: none; }
+        .panel { position: absolute; top: 0; left: 0; right: 0; bottom: var(--nav-h); z-index: 160; background: var(--bg); overflow-y: auto; padding: calc(16px + env(safe-area-inset-top)) 16px 16px; display: none; }
         .panel.open { display: block; }
-        .panel h2 { margin: 0 0 10px; font-size: 18px; }
-        .rlist { list-style: none; margin: 0; padding: 0; }
-        .rlist li { padding: 12px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+        .panel h2 { margin: 0 0 12px; font-size: 28px; font-weight: 700; letter-spacing: -0.01em; }
+        .rlist { list-style: none; margin: 0; padding: 0 16px; background: var(--card); border-radius: 12px; }
+        .rlist li { padding: 12px 0; border-top: 0.5px solid var(--sep); display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+        .rlist li:first-child { border-top: none; }
         .rlist .row { display: flex; gap: 8px; }
-        .rlist .row button { min-height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid #cfc3ad; background: #fff; font-size: 13px; }
+        .rlist .row button { min-height: 36px; padding: 0 14px; border-radius: 18px; border: none; background: var(--accent-tint); color: var(--accent); font-size: 15px; font-weight: 600; }
 
-        .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: var(--nav-h); padding-bottom: env(safe-area-inset-bottom); z-index: 200; background: var(--paper); border-top: 1px solid var(--line); display: flex; justify-content: space-around; align-items: center; }
-        .tab { min-width: 96px; min-height: 48px; background: none; border: none; color: var(--ink-sub); font-size: 13px; }
-        .tab[aria-selected="true"] { color: var(--shu); font-weight: 700; }
-        .count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--warn); color: #fff; font-size: 11px; }
+        .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: var(--nav-h); padding-bottom: env(safe-area-inset-bottom); z-index: 200; background: var(--chrome); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-top: 0.5px solid var(--sep); display: flex; justify-content: space-around; align-items: center; }
+        .tab { min-width: 96px; min-height: 48px; background: none; border: none; color: var(--label-2); font-size: 13px; font-weight: 500; }
+        .tab[aria-selected="true"] { color: var(--accent); font-weight: 600; }
+        .count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 11px; font-weight: 600; }
 
-        .gate { position: absolute; inset: 0; z-index: 300; background: var(--washi); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; }
-        .gate a { min-width: 200px; }
+        .gate { position: absolute; inset: 0; z-index: 300; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; font-size: 17px; }
+        .gate a { min-width: 220px; padding: 0 20px; }
     </style>
     <script src="js/sw-register.js"></script>
 </head>
@@ -202,7 +221,7 @@
     const gmaps = (c) => 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + c[1] + ',' + c[0];
 
     /* ---------- map ---------- */
-    const map = new mapboxgl.Map({ container: 'map', style: 'mapbox://styles/mapbox/light-v11', center: [135.8, 33.52], zoom: 10 });
+    const map = new mapboxgl.Map({ container: 'map', style: matchMedia('(prefers-color-scheme: dark)').matches ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11', center: [135.8, 33.52], zoom: 10 });
     const geo = new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true });
     map.addControl(geo, 'top-right');
     map.on('click', closeSheets);
@@ -247,7 +266,7 @@
             type: 'FeatureCollection',
             features: ROADS.map((r) => {
                 const lv = roadWorst(r, now);
-                return { type: 'Feature', properties: { color: lv === null ? '#9a9184' : ROAD_LEVELS[lv].color },
+                return { type: 'Feature', properties: { color: lv === null ? '#8e8e93' : ROAD_LEVELS[lv].color },
                     geometry: { type: 'LineString', coordinates: r.coords } };
             })
         };

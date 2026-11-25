@@ -7,35 +7,52 @@
     <meta name="description" content="串本町・那智勝浦町周辺の見学場・駐車場の混雑情報">
     <style>
         /* 回線が混んでも開けるよう、外部フォント・地図・SDK は読み込まない。フォントは Apple 端末の標準（SF・ヒラギノ） */
-        :root { --washi: #f3ede1; --paper: #faf6ee; --ink: #1a1a1a; --ink-sub: #5a5248; --shu: #b83a2b; --line: #e3d9c6; }
+        :root {
+            --bg: #f2f2f7; --card: #ffffff; --label: #1c1c1e; --label-2: #6c6c70;
+            --accent: #0071e3; --accent-fill: #0071e3; --accent-tint: rgba(0, 113, 227, 0.12);
+            --sep: rgba(60, 60, 67, 0.18); --fill: rgba(120, 120, 128, 0.12);
+            --banner: #1c1c1e; --danger: #d70015;
+            --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+            color-scheme: light;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000000; --card: #1c1c1e; --label: #ffffff; --label-2: #aeaeb2;
+                --accent: #0a84ff; --accent-tint: rgba(10, 132, 255, 0.18);
+                --sep: rgba(84, 84, 88, 0.65); --fill: rgba(118, 118, 128, 0.24); --banner: #2c2c2e;
+                color-scheme: dark;
+            }
+        }
         * { box-sizing: border-box; }
-        body { margin: 0; background: var(--washi); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif; font-size: 15px; line-height: 1.6; }
+        body { margin: 0; background: var(--bg); color: var(--label); font-family: var(--font); font-size: 17px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
         [hidden] { display: none !important; }
-        main { max-width: 640px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px; }
-        h1 { margin: 0; font-size: 20px; letter-spacing: 0.05em; }
-        .sub { margin: 0; font-size: 12px; color: var(--ink-sub); }
-        .launch { padding: 14px 16px; border-radius: 12px; background: var(--ink); color: #fff; }
-        .launch.alert { background: var(--shu); }
-        .launch strong { display: block; font-size: 22px; letter-spacing: 0.05em; }
-        .launch span { font-size: 14px; opacity: 0.92; }
-        .notice { padding: 12px 14px; border-radius: 12px; background: var(--paper); border: 1.5px solid var(--shu); white-space: pre-line; }
-        .notice small { display: block; color: var(--ink-sub); font-size: 12px; }
-        h2 { margin: 6px 0 0; font-size: 15px; }
-        ul { list-style: none; margin: 0; padding: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; }
-        li { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--line); }
+        main { max-width: 640px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 16px; }
+        h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.2; }
+        .sub { margin: 4px 0 0; font-size: 13px; color: var(--label-2); }
+        .launch { padding: 14px 16px; border-radius: 14px; background: var(--banner); color: #fff; }
+        .launch.alert { background: var(--danger); }
+        .launch strong { display: block; font-size: 22px; font-weight: 700; }
+        .launch span { font-size: 15px; opacity: 0.9; }
+        .notice { padding: 12px 16px; border-radius: 12px; background: var(--card); white-space: pre-line; font-size: 15px; }
+        .notice small { display: block; color: var(--label-2); font-size: 13px; }
+        #sections { display: flex; flex-direction: column; gap: 6px; }
+        h2 { margin: 12px 0 0 16px; font-size: 13px; font-weight: 400; color: var(--label-2); }
+        #sections h2:first-child { margin-top: 0; }
+        ul { list-style: none; margin: 0; padding: 0 0 0 16px; background: var(--card); border-radius: 12px; }
+        li { display: flex; align-items: center; gap: 10px; padding: 11px 16px 11px 0; border-top: 0.5px solid var(--sep); }
         li:first-child { border-top: none; }
         .grow { flex: 1; min-width: 0; }
-        .name { font-weight: 700; }
-        .meta { font-size: 12px; color: var(--ink-sub); }
-        .pill { flex-shrink: 0; padding: 3px 10px; border-radius: 12px; color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; }
-        .pill.none { background: #e3d9c6; color: var(--ink-sub); }
-        .nav { flex-shrink: 0; min-width: 56px; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1.5px solid var(--shu); color: var(--shu); font-size: 13px; font-weight: 700; text-decoration: none; }
-        .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--ink-sub); }
-        .foot button { min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid #cfc3ad; background: #fff; font: inherit; color: var(--ink); }
-        .err { color: var(--shu); font-size: 13px; }
-        .legend { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; }
-        a.map-link { color: var(--shu); font-size: 13px; }
-        .disclaimer { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--paper); border: 1px solid var(--line); font-size: 12px; color: var(--ink-sub); }
+        .name { font-size: 17px; }
+        .meta { font-size: 13px; color: var(--label-2); }
+        .pill { flex-shrink: 0; padding: 3px 10px; border-radius: 12px; color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; }
+        .pill.none { background: var(--fill); color: var(--label-2); }
+        .nav { flex-shrink: 0; min-width: 56px; min-height: 36px; padding: 0 12px; display: flex; align-items: center; justify-content: center; border-radius: 18px; background: var(--accent-tint); color: var(--accent); font-size: 15px; font-weight: 600; text-decoration: none; }
+        .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--label-2); padding: 0 4px; }
+        .foot button { min-height: 36px; padding: 0 16px; border-radius: 18px; border: none; background: var(--accent-tint); color: var(--accent); font: inherit; font-size: 15px; font-weight: 600; }
+        .err { margin: 0; color: var(--danger); font-size: 15px; }
+        .legend { display: flex; gap: 6px; flex-wrap: wrap; font-size: 13px; padding: 0 4px; }
+        a.map-link { color: var(--accent); font-size: 15px; text-decoration: none; padding: 0 4px; }
+        .disclaimer { margin: 0; padding: 12px 16px; border-radius: 12px; background: var(--card); font-size: 13px; color: var(--label-2); }
     </style>
     <script src="js/sw-register.js"></script>
 </head>
