@@ -231,6 +231,11 @@ function createDemoStore() {
             subs.auth.forEach(function (f) { f(null); });
         },
         ensureLive: async function () { /* デモでは不要 */ },
+        // デモ: 全データ消去（ログイン状態は残す）
+        demoReset: async function () {
+            [K_LIVE, K_LOGS, K_REPORTS].forEach(function (k) { try { localStorage.removeItem(k); } catch (e) { /* noop */ } });
+            emit.live(); emit.logs(); emit.reports();
+        },
         setSpotLevel: async function (spotId, level) {
             requireRole(user, ['owner', 'staff']);
             if (!isValidLevel(level)) throw new Error('不正な値');

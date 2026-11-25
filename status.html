@@ -35,7 +35,9 @@
         .err { color: var(--shu); font-size: 13px; }
         .legend { display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; }
         a.map-link { color: var(--shu); font-size: 13px; }
+        .disclaimer { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--paper); border: 1px solid var(--line); font-size: 12px; color: var(--ink-sub); }
     </style>
+    <script src="js/sw-register.js"></script>
 </head>
 <body>
 <main>
@@ -51,7 +53,7 @@
 
     <div class="notice" id="notice" aria-live="polite" hidden></div>
 
-    <p class="err" id="err" role="alert" hidden>通信できません。最後に取得した情報を表示しています。</p>
+    <p class="err" id="err" role="alert" hidden></p>
 
     <div id="sections"></div>
 
@@ -61,6 +63,7 @@
         <span id="updated">読み込み中…</span>
         <button type="button" id="reload">更新</button>
     </div>
+    <p class="disclaimer">この情報は職員が現地で確認した目安です。実際の状況と異なる場合があります。交通規制・打ち上げ日時は、警察・道路管理者・運営事業者などの公式発表を必ずご確認ください。</p>
     <a class="map-link" href="Index.html">巡礼マップ（地図）を開く ›</a>
 </main>
 
@@ -137,7 +140,7 @@
             n.textContent = r.name;
             li.append(n);
             r.dirs.forEach((dirName, d) => {
-                const e = live.roads[roadKey(r.id, d)];
+                const e = (live.roads || {})[roadKey(r.id, d)];
                 const lv = freshLevel(e, now);
                 const row = document.createElement('div');
                 row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px';
@@ -155,7 +158,7 @@
         });
         return [h, ul];
     }
-    const anyFreshRoad = (now) => Object.keys(live.roads).some((k) => freshLevel(live.roads[k], now) !== null);
+    const anyFreshRoad = (now) => Object.keys(live.roads || {}).some((k) => freshLevel(live.roads[k], now) !== null);
 
     function render() {
         if (!live) return;
@@ -196,11 +199,30 @@
             ' ・ ' + Math.round(PUBLIC_POLL_MS / 1000) + '秒ごとに自動更新';
     }
 
+    // 電波が弱い時のため、最後に取得できた情報を端末に保存して表示する
+    const CACHE_KEY = 'route42.public.last';
+    let fetchedAt = 0;
+    function saveCache(l) {
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data: l, at: Date.now() })); } catch (e) { /* 保存不可 */ }
+    }
+    function loadCache() {
+        try { const v = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); return v && v.data ? v : null; } catch (e) { return null; }
+    }
+    function showError() {
+        $('err').hidden = false;
+        $('err').textContent = live
+            ? '通信できません。' + formatClock(fetchedAt) + ' に取得した情報を表示しています。'
+            : '通信できません。電波の良い場所で「更新」を押してください。';
+        if (!live) $('updated').textContent = '取得できませんでした';
+    }
+    const cached = loadCache();
+    if (cached) { live = cached.data; fetchedAt = cached.at; render(); }
+
     function start() {
         if (stop) stop();
         stop = store.pollPublic(
-            (l) => { live = l; $('err').hidden = true; render(); },
-            () => { $('err').hidden = false; if (!live) $('updated').textContent = '取得できませんでした'; }
+            (l) => { live = l; fetchedAt = Date.now(); saveCache(l); $('err').hidden = true; render(); },
+            showError
         );
     }
     $('reload').addEventListener('click', start);

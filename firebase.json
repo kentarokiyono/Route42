@@ -5,14 +5,76 @@
   },
   "hosting": {
     "public": ".",
-    "ignore": ["firebase.json", "firestore.rules", "firestore.indexes.json","tools/**", "README.md", "**/.*", "Kinan_Apps_Wakayama_univ"],
-    "rewrites": [{ "source": "/", "destination": "/Index.html" }],
+    "ignore": [
+      "firebase.json",
+      "firestore.rules",
+      "firestore.indexes.json",
+      "tools/**",
+      "README.md",
+      "**/.*",
+      "Kinan_Apps_Wakayama_univ"
+    ],
+    "rewrites": [
+      {
+        "source": "/",
+        "destination": "/Index.html"
+      }
+    ],
     "headers": [
-      { "source": "data/spots.json", "headers": [{ "key": "Cache-Control", "value": "public, max-age=300" }] },
-      { "source": "data/route.json", "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }] },
-      { "source": "admin.html", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }] },
-      { "source": "staff.html", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }] },
-      { "source": "dashboard.html", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }] }
+      {
+        "source": "data/spots.json",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=300"
+          }
+        ]
+      },
+      {
+        "source": "data/route.json",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
+          }
+        ]
+      },
+      {
+        "source": "admin.html",
+        "headers": [
+          {
+            "key": "X-Robots-Tag",
+            "value": "noindex"
+          }
+        ]
+      },
+      {
+        "source": "staff.html",
+        "headers": [
+          {
+            "key": "X-Robots-Tag",
+            "value": "noindex"
+          }
+        ]
+      },
+      {
+        "source": "dashboard.html",
+        "headers": [
+          {
+            "key": "X-Robots-Tag",
+            "value": "noindex"
+          }
+        ]
+      },
+      {
+        "source": "sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
     ]
   }
 }

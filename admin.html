@@ -48,6 +48,7 @@
         .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
         .toast.show { opacity: 1; }
     </style>
+    <script src="js/sw-register.js"></script>
 </head>
 <body>
 <main>
@@ -99,6 +100,15 @@
                 <a class="btn btn-primary" href="dashboard.html" style="display:inline-flex;align-items:center;text-decoration:none">ダッシュボード（PC）</a>
                 <a class="btn" href="staff.html" style="display:inline-flex;align-items:center;text-decoration:none">職員マップ（スマホ）</a>
                 <a class="btn" href="status.html" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;text-decoration:none">一般向け混雑ページ</a>
+            </div>
+        </section>
+
+        <section class="card" id="demoCard" hidden>
+            <h2>デモ用データ</h2>
+            <p style="margin:0;font-size:13px;color:var(--ink-sub)">説明用に、打ち上げ当日を想定したサンプル（混雑・道路・報告・お知らせ）を入れます。この端末のブラウザ内だけで動作します。</p>
+            <div class="btn-row">
+                <button class="btn btn-primary" type="button" id="demoSeed">サンプルデータを入れる</button>
+                <button class="btn" type="button" id="demoReset">すべて消す</button>
             </div>
         </section>
 
@@ -239,6 +249,7 @@
         if (!u.role) return;
         document.querySelectorAll('.owner-only').forEach((el) => { el.hidden = !isOwner(); });
         $('adminsCard').hidden = !isOwner() || store.isDemo;
+        $('demoCard').hidden = !isOwner() || !store.isDemo;
         unsubs.push(store.subscribeLive((l) => { live = l; renderLive(); }, (e) => toast('受信エラー：' + e.message)));
         unsubs.push(store.subscribeLogs(renderLogs));
         if (isOwner() && store.subscribeAdmins) unsubs.push(store.subscribeAdmins(renderAdmins));
@@ -391,6 +402,38 @@
 
     /* ---------- handlers ---------- */
     $('initBtn').addEventListener('click', () => run(() => store.ensureLive(), '作成しました'));
+
+    // デモ: 打ち上げ当日を想定したサンプル
+    $('demoSeed').addEventListener('click', () => {
+        if (!confirm('今のデモデータを消して、サンプルデータを入れます。よろしいですか？')) return;
+        run(async () => {
+            await store.demoReset();
+            const view = SPOTS.launch.filter((s) => s.kind === 'viewing');
+            const park = SPOTS.launch.filter((s) => s.kind === 'parking');
+            const lv = [3, 0, 1];
+            for (let i = 0; i < view.length; i++) await store.setSpotLevel(view[i].id, lv[i % lv.length]);
+            const pv = [2, 0, 3];
+            for (let i = 0; i < park.length; i++) await store.setSpotLevel(park[i].id, pv[i % pv.length]);
+            const rv = [[1, 0], [2, 1], [2, 0], [0, 0]];
+            const roads = SPOTS.roads || [];
+            for (let i = 0; i < roads.length; i++) {
+                for (let d = 0; d < roads[i].dirs.length; d++) await store.setRoadLevel(roads[i].id, d, rv[i % rv.length][d] ?? 0);
+            }
+            if (park[2] && park[1]) await store.setNotice(park[2].name + 'は満車です。' + park[1].name + 'をご利用ください。');
+            const t = new Date(Date.now() + 2 * 60 * 60 * 1000);
+            const p2 = (n) => String(n).padStart(2, '0');
+            const time = t.getFullYear() + '-' + p2(t.getMonth() + 1) + '-' + p2(t.getDate()) + 'T' + p2(t.getHours()) + ':00';
+            await store.setLaunch({ state: 'countdown', time, note: '' });
+            await store.setMode('launch');
+            const c = (s, dx, dy) => [s.coords[0] + dx, s.coords[1] + dy];
+            if (roads[1]) await store.addReport({ text: '国道42号 古座〜田原 新宮方面 渋滞 約1km', coords: roads[1].coords[1] });
+            if (view[0]) await store.addReport({ text: view[0].name + ' 入口付近 歩行者が車道にはみ出し。誘導員の追加が必要', coords: c(view[0], 0.002, -0.001) });
+        }, 'サンプルデータを入れました');
+    });
+    $('demoReset').addEventListener('click', () => {
+        if (!confirm('デモデータをすべて消します。よろしいですか？')) return;
+        run(() => store.demoReset(), '消しました');
+    });
 
     $('modeSeg').addEventListener('click', (e) => {
         const b = e.target.closest('button');
