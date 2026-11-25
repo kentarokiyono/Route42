@@ -1,7 +1,7 @@
-// 巡礼ルートの道路形状と区間距離・時間を data/route.json に保存する。
+// 巡礼ルートの道路形状と区間距離・時間を frontend/public/data/route.json に保存する。
 // 利用者ごとの Directions API 呼び出しをなくすため、札所を変えたら一度だけ実行する。
-// 使い方: MAPBOX_TOKEN=pk.xxx node tools/build-route.mjs
-import { readFile, writeFile } from 'node:fs/promises';
+// 使い方: MAPBOX_TOKEN=pk.xxx node tools/build-route.mjs（出力: frontend/public/data/route.json）
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 
 const token = process.env.MAPBOX_TOKEN;
 if (!token) {
@@ -10,7 +10,7 @@ if (!token) {
 }
 
 const root = new URL('../', import.meta.url);
-const spots = JSON.parse(await readFile(new URL('data/spots.json', root), 'utf8')).pilgrim;
+const spots = JSON.parse(await readFile(new URL('frontend/data/spots.json', root), 'utf8')).pilgrim;
 const wp = spots.map((s) => s.coords.join(',')).join(';');
 const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${wp}?geometries=geojson&overview=full&access_token=${token}`;
 
@@ -32,5 +32,6 @@ const out = {
     coordinates: route.geometry.coordinates.map(([x, y]) => [Number(x.toFixed(5)), Number(y.toFixed(5))]),
     legs: route.legs.map((l) => ({ distance: Math.round(l.distance), duration: Math.round(l.duration) }))
 };
-await writeFile(new URL('data/route.json', root), JSON.stringify(out) + '\n');
-console.log(`data/route.json: ${out.coordinates.length} 点, ${out.legs.length} 区間, 計 ${(route.distance / 1000).toFixed(1)}km`);
+await mkdir(new URL('frontend/public/data/', root), { recursive: true });
+await writeFile(new URL('frontend/public/data/route.json', root), JSON.stringify(out) + '\n');
+console.log(`frontend/public/data/route.json: ${out.coordinates.length} 点, ${out.legs.length} 区間, 計 ${(route.distance / 1000).toFixed(1)}km`);

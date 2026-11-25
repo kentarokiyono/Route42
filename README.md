@@ -1,94 +1,48 @@
 # Route 42
 
-南紀の巡礼マップと、ロケット打ち上げ時の混雑共有（串本町・那智勝浦町 職員向け＋一般向け）。
+南紀・国道42号の巡礼マップと、ロケット打ち上げ時の混雑共有（串本町・那智勝浦町の職員が入力し、一般に配信）。
+構成と画面部品は wuscp-control-plane と同じ（Next.js + Tailwind + Supabase、iOS 風の部品）。
 
-| ファイル | 対象 | 内容 |
-|---|---|---|
-| `Index.html` | 一般 | 巡礼マップ。混雑度表示。打ち上げモード中は `status.html` へ案内 |
-| `status.html` | 一般 | 地図なしの軽量混雑ページ（打ち上げ状況・お知らせ・空いている順） |
-| `staff.html` | 職員 | 職員マップ（混雑入力・現場報告） |
-| `admin.html` | 職員 | 管理画面（ログイン・お知らせ・打ち上げ状況・モード切替・履歴・職員管理） |
-| `dashboard.html` | 職員 | PC 向けダッシュボード（地図・集計・一覧・詳細パネルで入力、ライト／ダーク対応、1〜4キーで入力） |
-
-| ファイル | 内容 |
+| 知りたいこと | 見るファイル |
 |---|---|
-| `data/spots.json` | 札所・見学場・駐車場・道路区間データ |
-| `data/route.json` | 巡礼ルートの事前計算結果（`tools/build-route.mjs` で生成） |
-| `js/store.js` | データ層（Firebase / デモ） |
-| `js/config.js` | Firebase 設定。`null` ならデモモード |
-| `firestore.rules` | Firestore セキュリティルール |
+| 構成・設定値・初回セットアップ・保守 | `DEPLOY.md` |
+| データベース | `schema.sql` |
+
+## 画面
+
+| URL | 対象 | 内容 |
+|---|---|---|
+| `/` | 一般 | 巡礼マップ。スポットの混雑度、混雑時は空いている候補を提案、訪問記録（端末に保存）。打ち上げ時は混雑情報ページへ案内 |
+| `/status` | 一般 | 混雑情報（地図なし・軽量）。打ち上げ状況・お知らせ・道路・見学場・臨時駐車場（空いている順）。60秒ごとに更新、通信できない時は最後に取得した内容 |
+| `/ops` | 職員 | 概要（集計・地図・選んで入力）。PC はサイドバー、スマホは下部タブ |
+| `/ops/spots` `/ops/roads` | 職員 | 混雑度・道路状況の一覧と入力 |
+| `/ops/reports` | 職員 | 現場報告（職員のみ閲覧）。対応済みにする |
+| `/ops/settings` | 職員 | お知らせ。オーナーは表示モード・打ち上げ状況・職員管理 |
+| `/ops/log` | 職員 | 入力履歴 |
 
 ## 権限
 
 | 操作 | オーナー | 職員 | 一般 |
 |---|---|---|---|
-| 公開データ閲覧（`public/current`） | ○ | ○ | ○ |
-| 職員データ閲覧（`live/current`、入力者名つき）・現場報告 | ○ | ○ | × |
-| 混雑入力（スポット・道路）・お知らせ | ○ | ○ | × |
-| 打ち上げ状況・モード切替・職員管理 | ○ | × | × |
+| 混雑情報（入力者名なし）を見る | ○ | ○ | ○ |
+| 入力者名・現場報告・履歴を見る | ○ | ○ | × |
+| 混雑度・道路・お知らせ・現場報告を入力 | ○ | ○ | × |
+| 表示モード・打ち上げ状況・職員管理 | ○ | × | × |
 
-両町共同運用（職員は全スポット入力可）。ルールは `firestore.rules` でサーバー側に強制。全操作は `logs` に記録。
+権限は `schema.sql` の関数と RLS でデータベース側が強制する。ログインはメールに届くリンク。
 
-## データ
-
-- `live/current`: 職員用。リアルタイム購読（同時接続は職員数＝最大500程度）。
-- `public/current`: 一般用。入力者名なし。職員の入力と同じバッチで更新。一般ページは SDK なしの REST で60秒ごとに取得。
-- `reports/*`: 現場報告（300文字まで、位置は任意）。
-- 道路: `data/spots.json` の `roads`（区間・方向・線形）。入力は区間×方向ごとに 順調／混雑／渋滞／通行止め。`live`/`public` の `roads.<区間ID>__<方向番号>` に保存。
-
-## デモモード（Firebase 未設定）
-
-`js/config.js` が `null` の間は、同じブラウザ内だけで動作する。
+## 開発
 
 ```
-python3 -m http.server 8000
-# http://localhost:8000/admin.html でログイン・入力
-# → 別タブの staff.html（即時）/ status.html・Index.html（5秒ごと）に反映
+cd frontend
+cp .env.local.example .env.local   # Supabase を使う場合だけ値を入れる
+npm install
+npm run dev                         # http://localhost:3000
 ```
 
-ES モジュールのため `file://` では動かない。
+Supabase の値が無い間は **デモモード**（データは端末のブラウザ内だけ）。`/ops` で名前と権限を選んでログインし、配信設定 →「サンプルデータを入れる」で打ち上げ当日を想定した状態になる。
 
-## Firebase 本番設定
+## データの差し替え
 
-1. Firebase コンソールでプロジェクト作成（リージョン: `asia-northeast1`）。
-2. Firestore Database を作成。
-3. Authentication で「メール/パスワード」と「Google」を有効化。
-4. プロジェクトの設定 > マイアプリ でウェブアプリを追加し、`firebaseConfig` を `js/config.js` に貼る。
-5. ルールとホスティングを反映:
-   ```
-   npm i -g firebase-tools
-   firebase login
-   firebase use --add
-   firebase deploy --only firestore:rules,firestore:indexes,hosting
-   ```
-6. 最初のオーナー登録（一度だけ、コンソールで手作業）:
-   - `admin.html` に自分のアカウントでログイン → 表示されたユーザーIDを控える。
-   - Firestore で `admins/<ユーザーID>` を作成: `name`（文字列）, `role` = `"owner"`。
-   - `admin.html` を再読み込み → 「配信用データを作成」（`live/current` と `public/current` を作成）。
-7. 職員の追加: 職員本人が `admin.html` にログイン → 表示されたIDをオーナーが「職員管理」で登録。
-   メール/パスワードのアカウントは Authentication 画面でオーナーが作成して渡す。
-
-## ルート事前計算
-
-札所を変えたら実行し、`data/route.json` をコミット。利用者ごとの Directions API 呼び出しがなくなる。
-
-```
-MAPBOX_TOKEN=pk.xxx node tools/build-route.mjs
-```
-
-## 電波が弱い現地での対策
-
-- `sw.js`（Service Worker）: 同じサイトのファイルはネット優先、失敗時は端末に保存した版を表示。https または localhost でのみ有効。
-- `status.html`: 最後に取得できた公開データを端末に保存し、通信できない時は取得時刻付きで表示。
-
-## デモ用サンプルデータ
-
-デモモードでオーナーとしてログイン → 管理画面「デモ用データ」→「サンプルデータを入れる」。打ち上げ当日を想定した混雑・道路・報告・お知らせが入る。「すべて消す」で初期化。
-
-## 大量アクセス対策
-
-- 一般向け `status.html` は地図・外部フォント・Firebase SDK なし。読み取りは60秒に1回。
-- 一般からの書き込みはなし。
-- `data/route.json` を置けば Directions API を呼ばない。
-- `Index.html`（巡礼マップ）は Mapbox の地図読み込み課金対象。打ち上げ当日は `status.html` に誘導する。
-- Mapbox トークンには URL 制限をかけること。
+- スポット・道路区間: `frontend/data/spots.json`（見学場・駐車場・区間は仮データ）
+- 巡礼ルートの事前計算: `MAPBOX_TOKEN=pk.xxx node tools/build-route.mjs` → `frontend/public/data/route.json` をコミット（利用者ごとの経路検索をなくす）
