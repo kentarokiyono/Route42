@@ -120,8 +120,10 @@ export default function PilgrimMapPage() {
 
   return (
     <div className="fixed inset-0 bg-grouped">
+      {/* 地図ライブラリの CSS が position を上書きするため、外側の枠で配置する */}
+      <div className="absolute inset-0">
       <MapView
-        className="absolute inset-0"
+        className="h-full w-full"
         points={points}
         lines={lines}
         selected={sel}
@@ -131,6 +133,7 @@ export default function PilgrimMapPage() {
         geolocate
         ariaLabel="巡礼ルートの地図"
       />
+      </div>
 
       {/* 上部 */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 bg-gradient-to-b from-grouped via-grouped/90 to-transparent px-4 pb-6 pt-[calc(12px+env(safe-area-inset-top))]">

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ModulePageHeader from "@/components/ModulePageHeader";
 import MapView, { type MapSel } from "@/components/MapView";
 import Segmented from "@/components/ui/Segmented";
@@ -24,9 +24,16 @@ function Metric({ label, value, href, warn }: { label: string; value: string; hr
 }
 
 export default function OverviewPage() {
-  const { live, reports } = useStaff();
+  const { live, reports, loaded } = useStaff();
   const now = useNow();
   const [set, setSet] = useState<SpotSet>(live.mode === "launch" ? "launch" : "pilgrim");
+  // 最初にデータが届いた時点のモードに合わせる（以降は手動の切替を優先）
+  const initialized = useRef(false);
+  useEffect(() => {
+    if (!loaded || initialized.current) return;
+    initialized.current = true;
+    setSet(live.mode === "launch" ? "launch" : "pilgrim");
+  }, [loaded, live.mode]);
   const [sel, setSel] = useState<MapSel>(null);
   const [newReport, setNewReport] = useState(false);
   const center = useRef<LngLat | null>(null);
@@ -69,7 +76,7 @@ export default function OverviewPage() {
         {live.mode === "launch" && (
           <Link
             href="/ops/settings"
-            className={`flex items-center justify-between gap-3 rounded-xl px-4 py-3 ${isLaunchAlert(st) ? "bg-p-red text-p-red-ink" : "bg-p-blue text-p-blue-ink"}`}
+            className={`flex flex-col gap-0.5 rounded-xl px-4 py-3 md:flex-row md:items-center md:justify-between md:gap-3 ${isLaunchAlert(st) ? "bg-p-red text-p-red-ink" : "bg-p-blue text-p-blue-ink"}`}
           >
             <span className="font-semibold">打ち上げモード ・ {LAUNCH_LABEL[st]}</span>
             <span className="tabular-nums text-[13px]">{[launchTime(live.launch.time), live.launch.note].filter(Boolean).join(" ・ ")}</span>
@@ -91,7 +98,7 @@ export default function OverviewPage() {
           <Segmented<SpotSet>
             size="sm"
             ariaLabel="地図に表示するスポット"
-            className="bg-card/90 shadow-sm backdrop-blur-xl"
+            className="w-48 bg-card/90 shadow-sm backdrop-blur-xl"
             value={set}
             onChange={(v) => {
               setSet(v);

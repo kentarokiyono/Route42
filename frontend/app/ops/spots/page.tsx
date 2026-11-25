@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ModulePageHeader from "@/components/ModulePageHeader";
 import Segmented from "@/components/ui/Segmented";
 import { Group, Row } from "@/components/ui/Grouped";
@@ -13,9 +13,16 @@ import { SPOT_LEVELS, freshLevel } from "@/lib/levels";
 import { KIND_LABEL, isRateable, spotsOf, type SpotKind, type SpotSet } from "@/lib/spots";
 
 export default function SpotsPage() {
-  const { live } = useStaff();
+  const { live, loaded } = useStaff();
   const now = useNow();
   const [set, setSet] = useState<SpotSet>(live.mode === "launch" ? "launch" : "pilgrim");
+  // 最初にデータが届いた時点のモードに合わせる（以降は手動の切替を優先）
+  const initialized = useRef(false);
+  useEffect(() => {
+    if (!loaded || initialized.current) return;
+    initialized.current = true;
+    setSet(live.mode === "launch" ? "launch" : "pilgrim");
+  }, [loaded, live.mode]);
   const [open, setOpen] = useState<string | null>(null);
 
   const spots = spotsOf(set).filter(isRateable);
